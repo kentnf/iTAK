@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-
 package itak;
 
 use strict;

@@ -77,14 +77,10 @@ sub itak_identify
 	my $usage =qq'
 USAGE:  perl $0 [options] input_seq 
 
-        -s  [String]    Type of input sequences (\'p\' for protein | \'n\' for 
-                        nucleotide). (default = p)
-        -m  [String]    Type of analysis (\'t\' for TF identification | \'p\' for 
-                        protein kinase identification |\'b\' for both). (default 
-                        = b)
         -a  [Integer]   number of CPUs used for hmmscan. (default = 1)
         -o  [String]    Name of the output directory. ( default = \'input file
                         name\' + \'_output\')
+
 ';
 
 	# +++++ check input parameters +++++
@@ -106,22 +102,26 @@ USAGE:  perl $0 [options] input_seq
 	unless (-e $bin_dir) { die "[ERR]bin folder not exist.\n$bin_dir\n"; }
 	unless (-e $dbs_dir) { die "[ERR]database folder not exist.\n $dbs_dir\n"; }
 	
-	my $hmm3_db = $dbs_dir."/TFHMM_3.hmm";          	# database for identify transcription factors (Pfam-A + customized)
-	my $tf_rule = $dbs_dir."/TF_Rule";              	# Rules for identify Transcription Factors
-	die "[ERR]Rules not exist $$tf_rule.\n" unless -s $tf_rule;
-	my $tf_cat = $dbs_dir."/TF_family";             	# TFs or TRs
-	my %tf_family_cat = tf_family_cat_to_hash($tf_cat);	# load tf family information
+	my $pfam_db = $dbs_dir."/TFHMM_3.hmm";			# database for transcription factors (Pfam-A + customized)
+	my $plantp_hmm_3  = $dbs_dir."/PlantsPHMM3_89.hmm";	# plantsP kinase
+	my $shiu_hmm_3 = $dbs_dir."/Plant_Pkinase_fam.hmm";	# shiu kinase database
+	foreach my $db (($pfam_db, $plantp_hmm_3, $shiu_hmm_3)) {
+		die "[ERR]database file $db\n" unless (-s $db.".h3f" && -s $db.".h3i" && -s $db.".h3m" && -s $db.".h3p");
+	}
 
-	my $plantp_hmm_3  = $dbs_dir."/PlantsPHMM3_89.hmm";
-	my $rkd_hmm_3 = $dbs_dir."/PlantsPHMM3_89.hmm";
-	my $shiu_hmm_3 = $dbs_dir."/Plant_Pkinase_fam.hmm";
+	#my $tf_rule = $dbs_dir."/TF_Rule";              	# Rules for Transcription Factors
+	#die "[ERR]Rules not exist $$tf_rule.\n" unless -s $tf_rule;
+	my %tf_rule = load_rule('TF_Rule.txt');
 
-	my $pk_desc = $dbs_dir."/PK_class_desc";
-	unless (-s $pk_desc) { die "protein kinase descriptions do not exist.\n"; }
-	my $pkid_des = pk_to_hash($pk_desc);
+	my %correct_ga = $dbs_dir."/GA_table"; 
+	my %ga_cutoff = load_ga_cutoff($pfam_db, $correct_ga);
+
+	#my $pk_desc = $dbs_dir."/PK_class_desc";
+	#unless (-s $pk_desc) { die "protein kinase descriptions do not exist.\n"; }
+	#my $pkid_des = pk_to_hash($pk_desc);
 
 	my $hmmscan_bin = $bin_dir."/hmmscan";			# hmmscan
-	print "[ERR]hmmscan not exist\n" and exit unless -s $hmmscan_bin;
+	die "[ERR]hmmscan not exist\n" unless -s $hmmscan_bin;
 
 	# +++++ main +++++ 
 	foreach my $f (@$files)
@@ -157,17 +157,15 @@ USAGE:  perl $0 [options] input_seq
 
 		# 1. compare input seq with database
 		# 2. TF identification
-		# my $hmmscan_command = "$hmmscan_bin --acc --notextw --cpu 24 -o $output_hmmscan1 $pfam_db $input_protein_f";
+		my $hmmscan_command = "$hmmscan_bin --acc --notextw --cpu 24 -o $output_hmmscan1 $pfam_db $input_protein_f";
 		run_cmd($hmmscan_command);
-		my ($all_hits, $all_detail) = itak::parse_hmmscan_result("$temp_dir/tf_hmm_output");
-		#my $tfTF_identification($all_hits, $all_detail)
+		my ($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($output_hmmscan1);
 
-		# my %rule = load_rule('TF_Rule.tab');
-		# print_rule(\%rule);
-
+		print "$hmmscan_hit_1, $hmmscan_detail_1";
+		itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%tf_rule);
+		die;
 	}
 }
-
 
 =head2
  itak_database -- prepare itak database
@@ -1644,14 +1642,78 @@ sub print_rule
 }
 
 =head2
- compare_rule - compare
+
+=cut
+sub load_ga_cutoff 
+{
+	my ($pfam_db, $correct_ga) = @_;
+	
+
+
+# %ga_cutoff = load_ga_cutoff($pfam_db, $correct_ga);
+
+}
+
+=head2
+ itak_tf_identify -- identify transcription factors
+
+AT1G01140.1   PF00069.20      19      274     1       260     YEMGRTLGEGSFAKVKYAKNTVTGDQAAIKILDREKVFRHKMVEQLKrEISTMKLIKHPNVVEIIEVMASKTKIYIVLEL
+VNGGELFDKIAQQGRLKEDEARRYFQQLINAVDYCHSRGVYHRDLKPENLILDANGVLKVSDFGLSAFSrqVREDGLLHTACGTPNYVAPEVLSDKGYDGAAADVWSCGVILFVLMAGYLPFDEP---NLMTLYKRICKAEFSC
+PPWFS----QGAKRVIKRILEPNPITRISIAELLEDEWF ye +++lG+Gsf+kV  ak+  tg++ A+Kil++e+  + k  ++l+ E++ +k ++Hpn+v+++ev+ +k+++y+vle+v+gg+lfd ++++g+l+e+e++++
+++q++++++y+Hs+g++HrDLKpeN++ld +g+lk++DFGl+      ++++ l+t +gt++Y+APEvl ++ ++++++DvWs+Gvil+ l+ g lpf++    + + l+++i k + + + + s    + +k +ik++le++p
+ +R++++e+l+++w+ yelleklGsGsfGkVykakekktgkkvAvKilkkeeekskkektalr.ElkilkklnHpnivkllevfeekdelylvleyveggdlfdllkkkgklseeeikkialqilegleylHsngiiHrDLKpe
+NiLldekgelkiaDFGlakkl..eksseklttlvgtreYmAPEvllkakeytkkvDvWslGvilyelltgklpfsgeseedqlelirkilkkkleedepkssskseelkdlikkllekdpakRltaeeilkhpwl 241.8  6
+.4e-72  Protein kinase domain   448
+
+=cut
+sub itak_tf_identify 
+{
+	my ($hmmscan_hit, $hmmscan_detail, $ga_cutoff, $tf_rule) = @_;
+
+	chomp($hmmscan_hit);
+	chomp($hmmscan_detail);
+
+	# put hits domains to hash : query_hits
+	# key: query ID
+	# value: array of hmm hits
+	my %query_hits;
+	my @a = split(/\n/, $hmmscan_hit);
+	foreach my $a (@a) 
+	{
+		my @b = split(/\t/, $a);
+		#AT1G01140.1     PF00069.20      241.8   6.4e-72
+
+		if (defined $query_hits{$b[0]}) {
+			$query_hits{$b[0]}.="\t".$b[1];
+		} else {
+			$query_hits{$b[0]} = $b[1];
+		}
+	}
+
+	# compare query_hits with rules
+	foreach my $qid (sort keys %query_hits)
+	{
+		my $hits = $query_hits{$qid};
+		#my $is_classified = compare_rule($hits, $tf_rule);
+	}
+}
+
+=head2
+ compare_rule : compare
  # input is two packaged hash hmm_hists
 =cut
 sub compare_rule
 {
-	my ($hmm_hits, $rule_pack) = @_;
+	my ($hmm_hit, $rule_pack) = @_;
 	
 	my %rule = %$rule_pack; # unpack the rule
+
+
+
+
+
+
+
 }
 
 =head2
@@ -1676,6 +1738,7 @@ sub seq_to_hash
 sub run_cmd
 {
 	my $cmd = shift;
+	print "[ERR]no command: $cmd\n" and exit unless $cmd;
 	print $cmd."\n" and return(1) if $debug;
 	system($cmd) && die "[ERR]cmd: $cmd\n";
 }

@@ -113,7 +113,7 @@ USAGE:  perl $0 [options] input_seq
 	#die "[ERR]Rules not exist $$tf_rule.\n" unless -s $tf_rule;
 	my %tf_rule = load_rule('TF_Rule.txt');
 
-	my %correct_ga = $dbs_dir."/GA_table"; 
+	my $correct_ga = $dbs_dir."/GA_table"; 
 	my %ga_cutoff = load_ga_cutoff($pfam_db, $correct_ga);
 
 	#my $pk_desc = $dbs_dir."/PK_class_desc";
@@ -1647,11 +1647,51 @@ sub print_rule
 sub load_ga_cutoff 
 {
 	my ($pfam_db, $correct_ga) = @_;
-	
 
 
-# %ga_cutoff = load_ga_cutoff($pfam_db, $correct_ga);
+	# put GA cutoff to hash
+	# key: pfam ID 
+	# value: GA score
+	my %ga_cutoff;
+	my ($pfam_id, $ga_score) = ('', '');
+	my $fh1 = IO::File->new($pfam_db) || die $!;
+	while(<$fh1>)
+	{
+		chomp;
+		if ($_ =~ m/^ACC\s+(\S+)/) {
+			$pfam_id = $1;
+			$pfam_id =~ s/\..*//;
+		} elsif ($_ =~ m/^GA\s+(\S+)/) {
+			$ga_score = $1;
+		} elsif ($_ eq "//") {
+			print "[ERR]no pfam id\n" unless $pfam_id;
+			print "[ERR]no ga score $pfam_id\n" unless $ga_score;
+			$ga_cutoff{$pfam_id} = $ga_score;
+			$pfam_id = '';
+			$ga_score = '';
+		} else {
+			next;
+		}	
+	}
+	$fh1->close;
 
+	# correct GA cutoff
+	my $fh2 = IO::File->new($correct_ga) || die $!;
+	while(<$fh2>)
+	{
+		chomp;
+		my @a = split(/\t/, $_);
+		($pfam_id, $ga_score) = @a;
+		$pfam_id =~ s/\..*//;
+		die "[ERR]no correct pfam id  $_\n" unless defined $ga_cutoff{$pfam_id};
+		die "[ERR]no correct ga score $_\n" unless $ga_score;
+		$ga_cutoff{$pfam_id} = $ga_score;
+	}
+	$fh2->close;
+
+	print scalar(keys(%ga_cutoff)). "record has GA score\n";
+	die;
+	return %ga_cutoff;
 }
 
 =head2

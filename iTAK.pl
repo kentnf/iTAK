@@ -114,6 +114,7 @@ USAGE:  perl $0 [options] input_seq
 	my %tf_rule = load_rule('TF_Rule.txt');
 
 	my $correct_ga = $dbs_dir."/GA_table"; 
+	die "[ERR]GA not exist\n" unless -s $correct_ga;
 	my %ga_cutoff = load_ga_cutoff($pfam_db, $correct_ga);
 
 	#my $pk_desc = $dbs_dir."/PK_class_desc";
@@ -160,9 +161,7 @@ USAGE:  perl $0 [options] input_seq
 		my $hmmscan_command = "$hmmscan_bin --acc --notextw --cpu 24 -o $output_hmmscan1 $pfam_db $input_protein_f";
 		run_cmd($hmmscan_command);
 		my ($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($output_hmmscan1);
-
-		print "$hmmscan_hit_1, $hmmscan_detail_1";
-		itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%tf_rule);
+		itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%ga_cutoff, \%tf_rule);
 		die;
 	}
 }
@@ -1689,8 +1688,7 @@ sub load_ga_cutoff
 	}
 	$fh2->close;
 
-	print scalar(keys(%ga_cutoff)). "record has GA score\n";
-	die;
+	# print scalar(keys(%ga_cutoff)). "record has GA score\n";
 	return %ga_cutoff;
 }
 
@@ -1716,12 +1714,18 @@ sub itak_tf_identify
 	# put hits domains to hash : query_hits
 	# key: query ID
 	# value: array of hmm hits
+	# * filter hits with lower score using GA cutoff
 	my %query_hits;
+	my ($query_id, $pfam_id, $score, $evalue);
 	my @a = split(/\n/, $hmmscan_hit);
 	foreach my $a (@a) 
 	{
 		my @b = split(/\t/, $a);
 		#AT1G01140.1     PF00069.20      241.8   6.4e-72
+		($query_id, $pfam_id, $score, $evalue) = @b;
+		$pfam_id =~ s/\..*//;
+		die "[ERR]undef GA score for $pfam_id\n" unless defined $$ga_cutoff{$pfam_id};
+		next if $score < $$ga_cutoff{$pfam_id};
 
 		if (defined $query_hits{$b[0]}) {
 			$query_hits{$b[0]}.="\t".$b[1];
@@ -1734,13 +1738,14 @@ sub itak_tf_identify
 	foreach my $qid (sort keys %query_hits)
 	{
 		my $hits = $query_hits{$qid};
-		#my $is_classified = compare_rule($hits, $tf_rule);
+		# print "$qid\t$hits\n";
+		my @rule_id = compare_rule($hits, $tf_rule);
 	}
 }
 
 =head2
  compare_rule : compare
- # input is two packaged hash hmm_hists
+ # input is filtered hmm_hit and packed rules
 =cut
 sub compare_rule
 {
@@ -1748,12 +1753,91 @@ sub compare_rule
 	
 	my %rule = %$rule_pack; # unpack the rule
 
+	# compare the hits with rules, including required, auxiiary, and forbidden domains
+	# the comparison will return match status: 
+	# 0, do not match
+	# 1, partially match
+	# 2, full match
+	# the assign family to each protein according hits and ruls
+	my @rule_id;
 
+	my @hits = split(/\t/, $hmm_hit);
 
+	foreach my $rid (sort keys %rule) {
+		my $required_h = $rule{$rid}{'required'};
+		my $auxiiary_h = $rule{$rid}{'auxiiary'};
+		my $forbidden_h = $rule{$rid}{'forbidden'};
 
+		# compare forbidden with hits
+		my $f_status = 0;
+		if ($forbidden_h ne 'NA') {
+			foreach my $forbidden (sort keys %$forbidden_h) {
+				my @f = split(/,/, $forbidden);
+				my $match_status = compare_array(@hits, @f);
+				$f_status = 1 if $match_status > 0;
+			}
+		}
+		next if $f_status == 1;
 
+		# compare required with hits
+		my $r_status = 0;
+		foreach my $required (sort keys %$required_h) {
+			my @r = split(/,/, $required);
+			my $match_status = compare_array(@hits, @r);
+			$r_status = 1 if $match_status == 2;
+		}
 
+		# compare auxiiary with hits
+		my $a_status = 0;
+		if ($auxiiary_h ne 'NA') {
+			foreach my $auxiiary (sort keys %$auxiiary_h) {
+				my @a = split(/,/, $auxiiary);
+				my $match_status = compare_array(@hits, @a);
+				$a_status = 1 if $match_status == 2;
+			}
+			push(@rule_id, $rid) if ($r_status == 1 && $a_status == 1);
 
+		} else {
+			push(@rule_id, $rid) if $r_status == 1;
+		}
+	}
+	return @rule_id;
+}
+
+# sub for compare rule
+sub compare_array
+{
+	my ($array_A, $array_B) = @_;
+	my @a = @$array_A;
+	my @b = @$array_B;	
+
+	# convert array to hash
+	my %ua; my %ub;
+	foreach my $a (@a) {
+		if (defined $ua{$a}) { $ua{$a}++; } else { $ua{$a} = 1; }
+	}
+
+	foreach my $b (@b) {
+		if (defined $ub{$b}) { $ub{$b}++; } else { $ub{$b} = 1; }
+	}
+	
+	# compare two hash
+	my $match = 0;
+	foreach my $b (sort keys %ub) {
+		$match++ if defined $ua{$b};
+	}
+
+	# retrun match status
+	# 0, do not match
+	# 1, partially match
+	# 2, full match	
+	my $match_status = 0;
+	$match_status = 1 if $match > 0;
+	if ( $match == scalar(keys(%ub)) ) {
+		$match_status = 2;
+	}
+
+	return $match_status; 
 }
 
 =head2

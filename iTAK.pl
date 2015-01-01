@@ -152,22 +152,25 @@ USAGE:  perl $0 [options] input_seq
 		print "[ERR]no input proteins\n" unless -s $input_protein_f;
 
 		# ==== Part A TF identification ====
-		# 1. compare input seq with database
+		# A1. compare input seq with database
 		my $hmmscan_command = "$hmmscan_bin --acc --notextw --cpu 24 -o $output_hmmscan1 $pfam_db $input_protein_f";
 		#run_cmd($hmmscan_command);
 		run_cmd($hmmscan_command) unless -s $output_hmmscan1; # test code
 		my ($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($output_hmmscan1);
 
-		# 2. TF identification
+		# A2. TF identification
 		my %qid_tid = itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%ga_cutoff, \%tf_rule);
 
-		# 3. save the result
+		# A3. save the result
 		my $output_sequence	  = "$output_dir/tf_sequence.txt";
 		my $output_alignment	  = "$output_dir/tf_alignment.txt";
 		my $output_classification = "$output_dir/tf_classification.txt";
 		itak_tf_write_out(\%qid_tid, \%seq_info, $hmmscan_detail_1, \%tf_rule, $output_sequence, $output_alignment, $output_classification);
 		
 		# ==== Part B PK identification ====	
+		# B1. compare input seq with database
+		# B2. PK identification
+		# B3. save the result
 		die;
 	}
 }
@@ -177,7 +180,47 @@ USAGE:  perl $0 [options] input_seq
 =cut
 sub itak_database
 {
+	my ($options, $files) = @_;
 
+        my $usage =qq'
+USAGE:  perl $0 -t database  ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-A.hmm.gz 
+
+';
+	print $usage and exit unless $$files[0];
+
+	# check file exist
+	my $bin_dir = ${FindBin::RealBin}."/bin";
+	my $dbs_dir = ${FindBin::RealBin}."/database";
+	unless (-e $bin_dir) { die "[ERR]bin folder not exist.\n$bin_dir\n"; }
+	unless (-e $dbs_dir) { die "[ERR]database folder not exist.\n $dbs_dir\n"; }
+
+	my $pfam_db = $dbs_dir."/TFHMM_3.hmm";                  # database for transcription factors (Pfam-A + customized)
+	die "[ERR]database exist $pfam_db\n" if -s $pfam_db;
+	my $TF_selfbuild = $dbs_dir."/TF_selfbuild.hmm";
+	die "[ERR]selfbuild hmm not exist $TF_selfbuild\n" unless -s $TF_selfbuild;
+	my $hmmpress_bin = $bin_dir."/hmmpress";		# hmmspress
+	die "[ERR]hmmpress not exist\n" unless -s $hmmpress_bin;
+
+	# build database;
+	my $pfam_a_gz = $$files[0];	$pfam_a_gz =~ s/.*\///;
+	my $pfam_a = $pfam_a_gz;	$pfam_a =~ s/\.gz//;
+	my $hmmscan_bin = $bin_dir."/hmmscan";                  # hmmscan
+	
+	# run_cmd("wget $$files[0]");
+	# run_cmd("gunzip $pfam_a_gz");
+	# run_cmd("cat $pfam_a $TF_selfbuild > $pfam_db");
+	# run_cmd("$hmmpress_bin $pfam_db");
+	# unlink($pfam_a);
+	
+	print qq'
+wget $$files[0]
+gunzip $pfam_a_gz
+cat $pfam_a $TF_selfbuild > $pfam_db
+$hmmpress_bin $pfam_db
+rm $pfam_a
+
+';
+	exit;
 }
 
 my %seq_hash;

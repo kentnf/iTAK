@@ -51,11 +51,6 @@ my $hmmscan_command;
 my $e1;
 
 =head
-
-my $ga_table = $dbs_dir."/GA_table";    	# GA score and Desc from PfamA, dependend one rules, prepared file
-unless (-s $ga_table) { die "GA score and Desc do not exist.\n"; }
-my ($ga_hash, $desc_hash) = ga_to_hash($ga_table);
-
 #################################################################
 # protein kinases Cat ID and It's desc to hash.                 #
 #################################################################
@@ -156,12 +151,23 @@ USAGE:  perl $0 [options] input_seq
 		$outp->close;
 		print "[ERR]no input proteins\n" unless -s $input_protein_f;
 
+		# ==== Part A TF identification ====
 		# 1. compare input seq with database
-		# 2. TF identification
 		my $hmmscan_command = "$hmmscan_bin --acc --notextw --cpu 24 -o $output_hmmscan1 $pfam_db $input_protein_f";
-		run_cmd($hmmscan_command);
+		#run_cmd($hmmscan_command);
+		run_cmd($hmmscan_command) unless -s $output_hmmscan1; # test code
 		my ($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($output_hmmscan1);
-		itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%ga_cutoff, \%tf_rule);
+
+		# 2. TF identification
+		my %qid_tid = itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%ga_cutoff, \%tf_rule);
+
+		# 3. save the result
+		my $output_sequence	  = "$output_dir/tf_sequence.txt";
+		my $output_alignment	  = "$output_dir/tf_alignment.txt";
+		my $output_classification = "$output_dir/tf_classification.txt";
+		itak_tf_write_out(\%qid_tid, \%seq_info, $hmmscan_detail_1, \%tf_rule, $output_sequence, $output_alignment, $output_classification);
+		
+		# ==== Part B PK identification ====	
 		die;
 	}
 }
@@ -176,9 +182,6 @@ sub itak_database
 
 my %seq_hash;
 =head
-#################################################################
-# main								#
-#################################################################
 
 # Step 2
 # the parsed hmmscan result was used in TFs prediction
@@ -425,232 +428,6 @@ sub ga_to_hash
 	return (\%ga);
 }
 
-=head2 parse_hmmscan_result
- 
- Function: parse hmmscan result 
-
- Input: hmmscan result file name
-
- Output1: detail hits info, format is below:
-          GeneID	PfamID		GA	Evalue
-	  AT2G34620.1	PF02536.7	242.2	4.5e-72
-
- Output2: alignment of hits into, format is below:
-	  1. GeneID      -- AT1G01140.1
-	  2. PfamID      -- PF00069.18
-	  3. Query Start -- 19
-          4. Query End   -- 274
-	  5. Hit Start   -- 1
-          6. Hit End     -- 260
-          7. Query Seq   -- YEMGRTLGEGSFAKVKYAKNTVTGDQAAIKILDREKVF....
-	  8. Alignment   -- ye++++lG+Gsf+kV  ak+  tg++ A+Kil++e+  ....
-	  9. Hit Seq     -- yelleklGsGsfGkVykakkkktgkkvAvKilkkeeek....
-          10. GA Score   -- 241.4
-          11. Evalue     -- 6.9e-72 
-          12. Description-- Protein kinase domain
-          13. Qeury Len  -- 448
-=cut
-sub parse_hmmscan_result
-{
-	my $hmm_result = shift;
-
-	my ($result_out1, $result_out2, $one_result, $align_detail, $hits);
-
-	my $rfh = IO::File->new($hmm_result) || die "Can not open hmmscan result file : $hmm_result $! \n";
-	while(<$rfh>)
-	{
-		unless (/^#/)
-		{
-			if (/^\/\//)
-			{
-				#################################
-				# parse domain info		#
-				#################################
-
-				############################################################
-				# short info for every hsp				   #
-				# $hits = query_id \t domain_id \t evalue \t score desc \n #
-				############################################################
-	
-				#$hits = parse_Hits($one_result);
-				my @hits_content = split(/>>/, $one_result);
-
-				#########################################################
-				# parse hit head content like below			#
-				#########################################################
-				#
-				# Match a line like this
-				# E-value  score  bias    E-value  score  bias    exp  N   Sequence Description
-				# -------  -----  -----   -------  ------ -----   ---- --  -------- -----------
-				#  4e-83   285.8  10.0    5.3e-83  285.5  7.0     1.1  1   Q14SN3.1 Q14SN3_9HEPC Polyprotein (Fragment).
-				#######################################################################################################
-				# previous hmmer3 parse function need this part for best one domain.
-				# New version just need Query name, length and no hit information in this part.
-				#######################################################################################################
-				my @hit_head = split(/\n/, $hits_content[0]);
-
-				my ($query_name, $query_length);
-
-				my $jumper = 0;
-				foreach my $hit_head_line (@hit_head)
-				{
-					if ($hit_head_line =~ m/^Query:\s+(\S+)\s+\[M\=(\d+)\]/) 
-					{
-						$query_name = $1; $query_length = $2;
-					}
-					elsif ($hit_head_line =~ m/^Query:\s+(\S+)\s+\[L\=(\d+)\]/) 
-					{
-						$query_name = $1; $query_length = $2;
-					}
-					elsif ($hit_head_line =~ m/No hits detected that satisfy reporting thresholds/)
-					{
-						$jumper = 1;
-						#die "$hit_head_line\n ";
-					}
-					else { next; }
-				}
-
-				#########################################################
-				# parse hsp part of hits				#
-				#########################################################
-
-				my $hsp_detail = ""; my $hsp_info = "";
-
-				unless( $jumper == 1)
-				{
-					for(my $ih=1; $ih<@hits_content; $ih++)
-					{
-						my $one_hit = ">>".$hits_content[$ih];
-						($hsp_info, $hsp_detail) = parse_align($one_hit, $query_name, $query_length);
-						$result_out1.= $hsp_info;
-						$result_out2.= $hsp_detail;
-					}
-				}
-
-				#########################################################
-				# init 							#
-				#########################################################
-			    	$one_result = "";
-			}
-			else 
-			{
-				#store all one protein hmmscan info to this char;
-				$one_result.=$_;
-			}
-		}
-	}
-	$rfh->close;
-
-	return ($result_out1, $result_out2);
-}
-
-sub parse_align
-{
-	my ($hsp_info, $query_name, $query_length) = @_;
-
-	my $output1 = ""; my $output2 = "";
-	
-	#########################################################
-	# get hit id, hit desc and hsp info form one hit	#
-	#########################################################
-	my @hsp_line = split(/\n/, $hsp_info);
-
-	my ($hit_id, $hit_desc);
-	my %info1 = ();
-
-	for(my $i=0; $i<@hsp_line; $i++)
-	{
-		if ($hsp_line[$i] =~ m/^>>\s+/)
-		{
-			my @aa = split(/\s+/, $hsp_line[$i], 3);
-			$hit_id = $aa[1];
-			$hit_desc = $aa[2];
-		}
-		elsif ( $hsp_line[$i] =~ m/^\s+(\d+)\s+\W\s+/)
-		{
-			$info1{$1} = $hsp_line[$i];
-		}
-		else
-		{
-			next;	
-		}
-	}
-
-	#########################################################
-	# get query string, hit string, match string of HSP	#
-	#########################################################
-	my ($query_string, $hit_string, $match_string, $hsp_length, $align_pos, $match_start);
-
-	my @domain = split(/== domain/, $hsp_info);
-
-	for(my $j=1; $j<@domain; $j++)
-	{
-		my @domain_line = split(/\n/, $domain[$j]);
-
-		my @info = split(/\s+/, $info1{$j});
-
-		for(my $k=1; $k<@domain_line; $k++)
-		{
-			#################################################
-			# get hit string of HSP				#
-			#################################################
-			if ($domain_line[$k] =~ m/^\s+\Q$hit_id\E\s+\d+\s+(\S+)\s+\d+/ )
-			{
-				my @fff = split(/\s+/, $domain_line[$k]);
-
-				$hit_string = $fff[3];
-	
-				$hsp_length = length($hit_string);
-
-				$align_pos = index($domain_line[$k], $fff[3]);
-
-				$match_start = 1;
-
-				if ($align_pos < 0)
-				{
-					die "Error! Align start position is negative: $align_pos\n$domain_line[2]\n$hit_string\n";
-				}
-			}
-
-			#################################################
-			# get match string of HSP			#
-			#################################################
-			elsif (defined $match_start && $match_start == 1 )
-			{
-				$match_string = substr($domain_line[$k], $align_pos, $hsp_length);
-				$match_start = 0;
-			}
-
-			#################################################
-			# get query string of HSP			#
-			#################################################
-			elsif ($domain_line[$k] =~ m/^\s+\Q$query_name\E/ ) 
-			{
-				my @qqq = split(/\s+/, $domain_line[$k]);
-				$query_string = $qqq[3];
-			}
-			else
-			{
-				next;
-			}
-
-		}
-		
-		#where these code come from? 
-		#$score   = $dMatch[3];
-		#$evalue  = $dMatch[6];
-		#$hmmfrom = $dMatch[7];
-		#$hmmto	  = $dMatch[8];
-		#$seqfrom = $dMatch[10];
-		#$seqto   = $dMatch[11];
-
-		$output1.="$query_name\t$hit_id\t$info[3]\t$info[6]\n";
-		$output2.="$query_name\t$hit_id\t$info[10]\t$info[11]\t$info[7]\t$info[8]\t$query_string\t$match_string\t$hit_string\t$info[3]\t$info[6]\t$hit_desc\t$query_length\n";
-	}
-
-	return ($output1,$output2);
-}
-
 =head2 parse_format_result
 
  Function: filter hmmscan parsed result, if socre >= GA score or evalue <= 1e-3, it will be seleted.
@@ -725,70 +502,6 @@ sub parse_format_result
 		}
 	}	
 	return (\%out_hash, \%hsp_hit_id, \%hsp_detail);
-}
-
-=head2
-
-
-=head2 parse_rule
-
- Function: parse rule file, return three hash.
-
- Input: rule_list (file)
-
- Return:
-	return hash1 -- key: family_name, value: domain_id1 # domain_id2 # ... # domain_idn
-	return hash2 -- key: family_name, value: domain_id1 # domain_id2 # ... # domain_idn
-	return hash3 -- key: family_name, value: mode
-=cut
-
-sub parse_rule
-{
-	my $rule_file = shift;
-	
-	# put rules to hash: key: rid (order), name, required, required num, forbidden 
-	my %rules;
-	my $fh = IO::File->new($rule_file) || die $!;
-	while(<$fh>)
-	{
-		chomp;
-		next if $_ =~ m/^#/;
-		my @a = split(/:/, $_, 2)
-	}
-	$fh->close;
-}
-
-
-sub parse_rulex
-{
-	my $rule_file = shift;
-	my %required; my %forbidden; my %mode;
-	my ($family_name, $required_d, $forbidden_d, $required_m);
- 
-	my $fh = IO::File->new($rule_file) || die "Can not open rule file $rule_file $! \n";
-	while(<$fh>)
-	{
-		chomp;
-		my @a = split(/:/, $_, 2);
-
-		if ($a[0] eq 'Family Name') 	{ $family_name = $a[1]; }
-		if ($a[0] eq 'Required Domain')	{ $required_d = $a[1];  }
-		if ($a[0] eq 'Forbidden Domain'){ $forbidden_d = $a[1]; }
-		if ($a[0] eq 'Required Mode')	{ $required_m = $a[1];  }
-		if ($_ eq "//")
-		{
-			$required{$family_name} = $required_d;
-			$forbidden{$family_name}= $forbidden_d;
-			$mode{$family_name} = $required_m;
-			$family_name = ""; $required_d = ""; $forbidden_d = ""; $required_m = "";
-		}
-	}
-	$fh->close;
-
-	return (\%required, \%forbidden, \%mode);
-
-
-
 }
 
 =head2 get_domain_id
@@ -1369,86 +1082,9 @@ sub tf_family_cat_to_hash
 	return %hash_cat;
 }
 
-
-#################################################################
-# kentnf: update function for new rules				#
-#################################################################
-
-# this rule is update on 20141103
-# # Description of each column
-# # 1. order of rule, the rule with small order number will have high priority
-# # 2. name of the rule -- subfamily
-# # 3. parent name of the rule -- superfamily
-# # 4. required domain
-# # 5. auxiiary domain
-# # 6. forbidden domain
-# # 7. description
-#
-
-=head2
- TFidentification -- comparison between seq domains and TF rules
-=cut
-sub TFidentification
-{
-	my ($tf_rule_file, $seq_domain) = @_;
-}
-
-
-=head2
- load rules to hash
-=cut
-sub load_tf_rules
-{
-	my $tf_rule_file = shift;
-
-	my %fast_requre_domain;
-	my %fast_forbid_domain;
-
-	my %tf_rule_obj;
-
-	my $fh = IO::File->new($tf_rule_file) || die $!;
-	while(<$fh>)
-	{
-		chomp;
-		next if $_ =~ m/^#/;
-		my @a = split(/\t/, $_);
-		if (@a >= 4) 
-		{
-			my ($order, $name, $parent, $require) = ($a[0], $a[1], $a[2], $a[3]);
-			
-		} 
-		elsif (@a == 3) 
-		{
-			
-		} 
-		else 
-		{
-			print 
-		}
-	}
-}
-
 #################################################################
 # kentnf: true subroutine					#
 #################################################################
-=head2
- parse domain rules
-=cut
-sub parse_domain_rules
-{
-	my $domain_rule = shift;
-
-	my @e1 = split(/:/, $domain_rule);
-	foreach my $r1 ( @e1 ) 
-	{
-		my @e2 = split(/,/, $e1);
-		foreach my $r2 ( @e2 )
-		{
-			print "[ERR] domain rule format $r2\n" and exit unless ($r2 =~ m/(\S+)#(\d+)/);
-		}
-	}
-}
-
 =head2
  load_rule -- load rule to hash
  # this rule is update on 20141103
@@ -1484,7 +1120,6 @@ sub load_rule
 			$rule_obj{$id}{'forbidden'} = parse_domain_rule($forbidden);
 			$rule_obj{$id}{'type'} = $type;	
 			$rule_obj{$id}{'desc'} = $desc;
-
 			($id, $name, $family, $required, $auxiiary, $forbidden, $type, $desc) = ('', ''. '', '', '', '', '', '');
 		} elsif ($_ =~ m/^ID:/) {
 			$id = $_; $id =~ s/^ID://;
@@ -1546,7 +1181,7 @@ sub parse_domain_rule
 		# key, array of domains for the rule, sub of domain_combination, equal to domain_combination when @r == 1;
 		my %domain_combination_sub = ();
 
-		my @m = split(/-/, $r);
+		my @m = split(/--/, $r);
 		foreach my $m ( @m ) {
 
 			my @p = split(/:/, $m);
@@ -1577,7 +1212,7 @@ sub parse_domain_rule
 				foreach my $com (sort keys %domain_combination_sub) {
 					delete $domain_combination_sub{$com};		# remove old record
 					foreach my $p (@p) {
-						my $domain_id = split_domain_num($p);
+						my $domain_id = split_domain_num($p);	
 						my $new_com = $com.",$domain_id";	# add new domain to old for new record
 						$domain_combination_sub{$new_com} = 1;	# put new reacord to hash
 					}
@@ -1596,10 +1231,12 @@ sub parse_domain_rule
 sub split_domain_num
 {
 	my $domain_num = shift;
-	die "[ERR]domain num format $domain_num\n" unless $domain_num =~ m/#/;
+	# print "x:$domain_num\n";
+
+	die "[ERR]domain num format 1 $domain_num\n" unless $domain_num =~ m/#/;
 	my @a = split(/#/, $domain_num);
-	die "[ERR]domain num format $domain_num\n" unless (scalar @a == 2);
-	die "[ERR]domain num format $domain_num\n" unless $a[1] > 0;
+	die "[ERR]domain num format 2 $domain_num\n" unless (scalar @a == 2);
+	die "[ERR]domain num format 3 $domain_num\n" unless $a[1] > 0;
 	my $domain_id = '';
 	for (my $i=0; $i<$a[1]; $i++) {
 		$domain_id.=",".$a[0];
@@ -1711,6 +1348,11 @@ sub itak_tf_identify
 	chomp($hmmscan_hit);
 	chomp($hmmscan_detail);
 
+	# create hash for result
+	# key: query id of protein
+	# value: tid of TF
+	my %qid_tid;
+
 	# put hits domains to hash : query_hits
 	# key: query ID
 	# value: array of hmm hits
@@ -1723,14 +1365,14 @@ sub itak_tf_identify
 		my @b = split(/\t/, $a);
 		#AT1G01140.1     PF00069.20      241.8   6.4e-72
 		($query_id, $pfam_id, $score, $evalue) = @b;
-		$pfam_id =~ s/\..*//;
+		$pfam_id =~ s/\..*// if $pfam_id =~ m/^PF/;
 		die "[ERR]undef GA score for $pfam_id\n" unless defined $$ga_cutoff{$pfam_id};
 		next if $score < $$ga_cutoff{$pfam_id};
 
 		if (defined $query_hits{$b[0]}) {
-			$query_hits{$b[0]}.="\t".$b[1];
+			$query_hits{$b[0]}.="\t".$pfam_id;
 		} else {
-			$query_hits{$b[0]} = $b[1];
+			$query_hits{$b[0]} = $pfam_id;
 		}
 	}
 
@@ -1740,7 +1382,15 @@ sub itak_tf_identify
 		my $hits = $query_hits{$qid};
 		# print "$qid\t$hits\n";
 		my @rule_id = compare_rule($hits, $tf_rule);
+
+		if (scalar @rule_id > 0) {
+			foreach my $tid ( @rule_id ) {
+				$qid_tid{$qid} = $tid;
+			}
+		}
 	}
+
+	return %qid_tid;
 }
 
 =head2
@@ -1773,7 +1423,7 @@ sub compare_rule
 		if ($forbidden_h ne 'NA') {
 			foreach my $forbidden (sort keys %$forbidden_h) {
 				my @f = split(/,/, $forbidden);
-				my $match_status = compare_array(@hits, @f);
+				my $match_status = compare_array(\@hits, \@f);
 				$f_status = 1 if $match_status > 0;
 			}
 		}
@@ -1783,7 +1433,7 @@ sub compare_rule
 		my $r_status = 0;
 		foreach my $required (sort keys %$required_h) {
 			my @r = split(/,/, $required);
-			my $match_status = compare_array(@hits, @r);
+			my $match_status = compare_array(\@hits, \@r);
 			$r_status = 1 if $match_status == 2;
 		}
 
@@ -1792,7 +1442,7 @@ sub compare_rule
 		if ($auxiiary_h ne 'NA') {
 			foreach my $auxiiary (sort keys %$auxiiary_h) {
 				my @a = split(/,/, $auxiiary);
-				my $match_status = compare_array(@hits, @a);
+				my $match_status = compare_array(\@hits, \@a);
 				$a_status = 1 if $match_status == 2;
 			}
 			push(@rule_id, $rid) if ($r_status == 1 && $a_status == 1);
@@ -1824,7 +1474,9 @@ sub compare_array
 	# compare two hash
 	my $match = 0;
 	foreach my $b (sort keys %ub) {
-		$match++ if defined $ua{$b};
+		if (defined $ua{$b} && $ua{$b} >= $ub{$b}) {
+			$match++;
+		}
 	}
 
 	# retrun match status
@@ -1838,6 +1490,49 @@ sub compare_array
 	}
 
 	return $match_status; 
+}
+
+=head2
+ itak_tf_write_out: write out tf result to output file
+=cut
+sub itak_tf_write_out
+{
+	my ($qid_tid, $seq_info, $hmmscan_detail_1, $tf_rule, $output_sequence, $output_alignment, $output_classification) = @_;
+
+	# put hmmscan_detail to hash
+	my %q_detail;
+	chomp($hmmscan_detail_1);
+	my @a = split(/\n/, $hmmscan_detail_1);
+	foreach my $a (@a) {
+		my @b = split(/\t/, $a);
+		if (defined $q_detail{$b[0]}) {
+			$q_detail{$b[0]}.= $a."\n";
+		} else {
+			$q_detail{$b[0]} = $a."\n";
+		}
+	}
+
+	my $out1 = IO::File->new(">".$output_sequence) || die $!;
+	my $out2 = IO::File->new(">".$output_alignment) || die $!;
+	my $out3 = IO::File->new(">".$output_classification) || die $!; 
+
+	foreach my $qid (sort keys %$qid_tid) {
+		
+		my $tid     = $$qid_tid{$qid};
+		my $tname   = $$tf_rule{$tid}{'name'};
+		my $tfamily = $$tf_rule{$tid}{'family'};
+		my $type    = $$tf_rule{$tid}{'type'};
+		my $desc    = $$tf_rule{$tid}{'desc'};
+		my $qseq    = $$seq_info{$qid}{'seq'};
+		my $align   = $q_detail{$qid};
+
+		print $out1 ">$qid [$type]$tname:$tfamily--$desc\n$qseq\n";
+		print $out2 $align;
+		print $out3 "$qid\t$tname\t$type\t$tfamily\n";
+	}
+	$out1->close;
+	$out2->close;
+	$out3->close;
 }
 
 =head2

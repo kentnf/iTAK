@@ -45,7 +45,7 @@ Desc:NA
 ID:T0002
 Name:RAV
 Family:AP2/ERF->RAV
-Required:PF00847#1-PF02362#1
+Required:PF00847#1--PF02362#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -55,7 +55,7 @@ Desc:NA
 ID:T0003
 Name:ARF
 Family:B3_superfamily->ARF
-Required:PF02362#1-PF06507#1
+Required:PF02362#1--PF06507#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -135,7 +135,7 @@ Desc:NA
 ID:T0011
 Name:C2C2-CO-like
 Family:C2C2->C2C2-CO-like
-Required:PF00643#1-PF06203#1
+Required:PF00643#1--PF06203#1
 Auxiiary:NA
 Forbidden:PF00320#1:PF04640#1
 Type:TF
@@ -256,7 +256,7 @@ Desc:NA
 ID:T0023
 Name:ARR-B
 Family:GARP->ARR-B
-Required:G2-like#1-PF00072#1
+Required:G2-like#1--PF00072#1
 # kentnf 
 Auxiiary:NA
 Forbidden:PF06203#1
@@ -286,8 +286,8 @@ Desc:NA
 
 ID:T0026
 Name:GRAS
-Family:PF03514#1
-Required: 
+Family:GRAS
+Required:PF03514#1 
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -308,7 +308,7 @@ Desc:NA
 ID:T0028
 Name:HD-ZIP
 Family:HB->HD-ZIP
-Required:PF00046#1-PF01852#1-HDZIP
+Required:PF00046#1--PF01852#1--HD-ZIP#1
 # kentnf
 Auxiiary:NA
 Forbidden:NA
@@ -319,7 +319,7 @@ Desc:NA
 ID:T0029
 Name:TALE
 Family:HB->TALE
-Required:PF00046#1-PF03798#1-BELL#1
+Required:PF00046#1--PF03798#1--BELL#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -329,7 +329,7 @@ Desc:NA
 ID:T0030
 Name:WOX
 Family:HB->WOX
-Required:PF00046#1-WusType#1
+Required:PF00046#1--WusType#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -339,7 +339,7 @@ Desc:NA
 ID:T0031
 Name:HB-PHD
 Family:HB->HB-PHD
-Required:PF00046#1-PF00628#1
+Required:PF00046#1--PF00628#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -399,7 +399,7 @@ Desc:NA
 ID:T0037
 Name:MIKC
 Family:MADS->MIKC
-Required:PF00319#1-PF01486#1
+Required:PF00319#1--PF01486#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -639,16 +639,16 @@ Type:TF
 Desc:NA
 //
 
-ID:T0061
-Name:WD40like
-Family:WD40like
-Required:????
+# ID:T0061
+# Name:WD40like
+# Family:WD40like
+# Required:
 # kentnf
-Auxiiary:NA
-Forbidden:NA
-Type:TF
-Desc:NA
-//
+# Auxiiary:NA
+# Forbidden:NA
+# Type:TF
+# Desc:NA
+# //
 
 ID:T0062
 Name:Alfin-like
@@ -721,15 +721,15 @@ Type:TF
 Desc:NA
 //
 
-ID:T0070
-Name:OFP
-Family:OFP
-Required:kentnf
-Auxiiary:NA
-Forbidden:NA
-Type:TF
-Desc:NA
-//
+# ID:T0070
+# Name:OFP
+# Family:OFP
+# Required:kentnf
+# Auxiiary:NA
+# Forbidden:NA
+# Type:TF
+# Desc:NA
+# //
 
 ID:T0071
 Name:PLATZ

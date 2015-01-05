@@ -292,6 +292,17 @@ USAGE:  perl $0 [options] input_seq
                 $ca_fh2->close;
                 $al_fh2->close;	
 
+		# output pkinase sequences
+		my $pkinase_seq = $output_dir."/pk_sequence.txt";
+		my $out_pks = IO::File->new(">".$pkinase_seq) || die $!;
+		foreach my $pid (sort keys %pkinase_id) {
+			my $cat1 = 'NA'; my $cat2 = 'NA';
+			$cat1 = $$plantsp_cat{$pid} if defined $$plantsp_cat{$pid};
+			$cat2 = $$shiu_cat{$pid} if defined $$shiu_aln{$pid};
+			print $out_pks ">$pid PlantsP:$cat1;Shiu:$cat2\n$seq_info{$pid}{'seq'}\n";
+		}
+		$out_pks->close;
+
 		print $report_info."\n";
 		# remove temp folder
 		# run_cmd("rm -rf $temp_dir") if -s $temp_dir;

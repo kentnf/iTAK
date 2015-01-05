@@ -134,6 +134,7 @@ USAGE:  perl $0 [options] input_seq
 		#run_cmd($hmmscan_command);
 		run_cmd($hmmscan_command) unless -s $tmp_pfam_hmmscan; # test code
 		my ($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($tmp_pfam_hmmscan);
+		my %align_pfam_hash = aln_to_hash($hmmscan_detail_1, \%ga_cutoff);
 
 		# ==== A2. TF identification ====
 		my %qid_tid = itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%ga_cutoff, \%tf_rule);
@@ -184,8 +185,8 @@ USAGE:  perl $0 [options] input_seq
 		my ($shiu_hit, $shiu_detail)       = itak::parse_hmmscan_result($tmp_shiu_hmmscan);
 
 		# ==== B3. PK classification ====		
-		my %plantsp_cat = itak_pk_classify($plantsp_hit);
-                my %shiu_cat = itak_pk_classify($shiu_hit);
+		my ($plantsp_cat, $plantsp_aln) = itak_pk_classify($plantsp_detail);
+                my ($shiu_cat, $shiu_aln) = itak_pk_classify($shiu_detail);
 
                 # ==== B4 classification of sub pkinase ====
 		my @wnk1 = ("$dbs_dir/wnk1_hmm_domain/WNK1_hmm",   "30" , "PPC:4.1.5", "PPC:4.1.5.1");
@@ -201,8 +202,8 @@ USAGE:  perl $0 [options] input_seq
 			my $seq_num = 0;
 			my $ppc_seq = "$temp_dir/temp_ppc_seq";
 			my $ppfh = IO::File->new(">".$ppc_seq) || die $!;
-			foreach my $seq_id (sort keys %plantsp_cat) {
-				if ( $plantsp_cat{$seq_id} eq $cat ) {
+			foreach my $seq_id (sort keys %$plantsp_cat) {
+				if ( $$plantsp_cat{$seq_id} eq $cat ) {
                				die "[ERR]seq id: $seq_id\n" unless defined $seq_info{$seq_id}{'seq'};
                                 	print $ppfh ">".$seq_id."\n".$seq_info{$seq_id}{'seq'}."\n";
                                 	$seq_num++;
@@ -218,11 +219,14 @@ USAGE:  perl $0 [options] input_seq
         		my $hmm_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $ppc_hmm_result $hmm_profile $ppc_seq";
 			run_cmd($hmm_cmd) unless -s $ppc_hmm_result;
         		my ($ppc_hits, $ppc_detail) = itak::parse_hmmscan_result($ppc_hmm_result);
-			my @hit = split(/\n/, $ppc_hits);
+			my @hit = split(/\n/, $ppc_detail);
 
 			foreach my $h (@hit) {
 				my @a = split(/\t/, $h);
-				$plantsp_cat{$a[0]} = $sub_cat if $a[2] >= $cutoff;
+				if ( $a[9] >= $cutoff ) {
+					$$plantsp_cat{$a[0]} = $sub_cat;
+					$$plantsp_aln{$a[0]} = $h."\n";
+				}
 			}
                 }
 
@@ -243,47 +247,48 @@ USAGE:  perl $0 [options] input_seq
 
                 my $ca_fh1 = IO::File->new(">".$ppc_cat) || die $!;
                 my $al_fh1 = IO::File->new(">".$ppc_aln) || die $!;
-		foreach my $pid (sort keys %plantsp_cat) { print $ca_fh1 $pid."\t".$plantsp_cat{$pid}."\t".$$pkid_des{$plantsp_cat{$pid}}."\n"; }
+		foreach my $pid (sort keys %$plantsp_cat) { print $ca_fh1 $pid."\t".$$plantsp_cat{$pid}."\t".$$pkid_des{$$plantsp_cat{$pid}}."\n"; }
 
-=head
-                foreach my $pid (sort keys %pkinases_cat)
-                {
-                        if (defined $pkinase_aln{$pid})
-                        {
-                                print $al_fh1 $pkinase_aln{$pid};
-                        }
-                        else
-                        {
+                foreach my $pid (sort keys %$plantsp_cat) {
+                        if (defined $align_pfam_hash{$pid} && defined $$plantsp_cat{$pid} ) {
+				print $al_fh1 $$plantsp_aln{$pid};
+                                print $al_fh1 $align_pfam_hash{$pid};
+                        } else {
                                 die "Error! Do not have alignments in hmm3 parsed result\n";
                         }
-                        delete $pkinase_id{$pid};
+                        # delete $pkinase_id{$pid};
                 }
 
-                foreach my $pid (sort keys %pkinase_id)
-                {
-                        print $ca_fh1 $pid."\tPPC:1.Other\n";
+                #foreach my $pid (sort keys %plantsp_cat) {
+                #        print $ca_fh1 $pid."\tPPC:1.Other\n";
+		#
+		#	if (defined $pkinase_aln{$pid}) {
+                #                print $al_fh1 $pkinase_aln{$pid};
+                #        } else {
+                #                die "Error! Do not have alignments in hmm3 parsed result\n";
+                #        }
+                #}
 
-                        if (defined $pkinase_aln{$pid})
-                        {
-                                print $al_fh1 $pkinase_aln{$pid};
-                        }
-                        else
-                        {
-                                die "Error! Do not have alignments in hmm3 parsed result\n";
-                        }
-                }
-=cut
 		$ca_fh1->close;
                 $al_fh1->close;
 		
                 # output Shiu classification
-		my $shiu_cat = $output_dir."/shiu_classification.txt";
-                my $shiu_aln = $output_dir."/shiu_alignment.txt";
+		my $shiu_cat_file = $output_dir."/shiu_classification.txt";
+                my $shiu_aln_file = $output_dir."/shiu_alignment.txt";
 
-                my $ca_fh2 = IO::File->new(">".$shiu_cat) || die $!;
-                my $al_fh2 = IO::File->new(">".$shiu_aln) || die $!;
-                foreach my $pid (sort keys %shiu_cat) { print $ca_fh2 $pid."\t".$shiu_cat{$pid}."\n"; }
-                #print $al_fh2 $hmm3_shiu_align;
+                my $ca_fh2 = IO::File->new(">".$shiu_cat_file) || die $!;
+                my $al_fh2 = IO::File->new(">".$shiu_aln_file) || die $!;
+                foreach my $pid (sort keys %$shiu_cat) { print $ca_fh2 $pid."\t".$$shiu_cat{$pid}."\n"; }
+		
+		foreach my $pid (sort keys %$shiu_cat) { 
+                        if (defined $align_pfam_hash{$pid} && defined $$shiu_cat{$pid} ) {
+                                print $al_fh2 $$shiu_aln{$pid};
+                                print $al_fh2 $align_pfam_hash{$pid};
+                        } else {
+                                die "Error! Do not have alignments in hmm3 parsed result\n";
+                        }
+		}
+
                 $ca_fh2->close;
                 $al_fh2->close;	
 
@@ -343,27 +348,9 @@ rm $pfam_a
 
 my %seq_hash;
 =head
-#########################################################
-# After Protein Kinase Prediction, Two Char Produced	#
-# 1. temp_all_hmmscan_family				#
-# 2. temp_all_hmmscan_domain				#
-#########################################################
 
 if ($mode =~ m/^p|b$/i)
 {
-	# Step 3.1 produce protein kinase sequence
-	# pkinase_id has the protein ID with high GA score in Pfam Kinase domain
-	# key: gene_id, value: 1; 
-	my %pkinase_id = cutoff($all_hits, \%transposase);
-
-	# pkinase_aln
-	# key: gene_id, value: align detail for gene
-	my %pkinase_aln = aln_to_hash($all_detail);
-
-	my $protein_kinase_seq = $output_dir."/".$input_seq."_pkseq";
-
-	my $pk_seq_num = scalar(keys(%pkinase_id));
-
 	if ($pk_seq_num > 0)
 	{
 		# save protein kinase sequence to fasta file (with protein kinases domain)
@@ -382,32 +369,6 @@ if ($mode =~ m/^p|b$/i)
 		$pk_fh->close;
 
 		# Step 3.3 Get Protein Kinases Classification using hmmscan
-		# Step 3.3.1 hmmscan
-		my $tmp_plantsp_hmm_result = "$temp_dir/temp_plantsp_hmm_result";
-		my $tmp_rkd_hmm_result 	   = "$temp_dir/temp_rkd_hmm_result";
-		my $tmp_shiu_hmm_result    = "$temp_dir/temp_shiu_hmm_result";
-
-		my $plantsp_hmmscan_command = $bin_dir."/hmmscan --acc --notextw --cpu $cpus -o $tmp_plantsp_hmm_result $plantp_hmm_3 $protein_kinase_seq";
-		my $rkd_hmmscan_command     = $bin_dir."/hmmscan --acc --notextw --cpu $cpus -o $tmp_rkd_hmm_result     $rkd_hmm_3    $protein_kinase_seq";
-		my $shiu_hmmscan_command    = $bin_dir."/hmmscan --acc --notextw --cpu $cpus -o $tmp_shiu_hmm_result    $shiu_hmm_3   $protein_kinase_seq";
-
-		print $plantsp_hmmscan_command if $debug == 1;
-		print $rkd_hmmscan_command if $debug == 1;
-		print $shiu_hmmscan_command if $debug == 1;
-
-		unless (-s $tmp_plantsp_hmm_result) { system($plantsp_hmmscan_command) && die "Error at hmmscan command: $plantsp_hmmscan_command\n"; }
-		#unless (-s $tmp_rkd_hmm_result)  { system($rkd_hmmscan_command) && die "Error at hmmscan command: $rkd_hmmscan_command\n"; }	
-		unless (-s $tmp_shiu_hmm_result) { system($shiu_hmmscan_command) && die "Error at hmmscan command: $shiu_hmmscan_command\n"; }
-		
-		# Step 3.3.2 parse hmmscan result
-		my ($hmm3_simple_result, $hmm3_simple_align) = parse_hmmscan_result($tmp_plantsp_hmm_result);
-		#my ($hmm3_rkd_result, $hmm3_rkd_align) = parse_hmmscan_result($tmp_rkd_hmm_result);
-		my ($hmm3_shiu_result, $hmm3_shiu_align) = parse_hmmscan_result($tmp_shiu_hmm_result);
-
-		# Step 3.3.3 get classification info base simple hmminfo, means get best hits of simple result, then add annotation and output alignment file
-		my %pkinases_cat = get_classification($hmm3_simple_result);
-		my %shiu_cat = get_classification($hmm3_shiu_result);
-		#my %rkd_cat = get_classification($hmm3_rkd_result);
 
 		#################################################
 		# output PlantsP alignment and classification 	#
@@ -458,39 +419,8 @@ if ($mode =~ m/^p|b$/i)
 			print $ca_fh1 $pid."\t".$pkinases_cat{$pid}."\t".$$pkid_des{$pkinases_cat{$pid}}."\n";
 		}
 		$ca_fh1->close;
-
-
 		#################################################
-                # output Shiu alignment and classification   	#
-                #################################################
-                my $protein_kinase_aln2 = $output_dir."/".$input_seq."_pkaln2";
-                my $protein_kinase_cat2 = $output_dir."/".$input_seq."_pkcat2";
-
-                my $ca_fh2 = IO::File->new(">".$protein_kinase_cat2) || die "Can not open protein kinase sequence file: $protein_kinase_cat2 $!\n";
-                my $al_fh2 = IO::File->new(">".$protein_kinase_aln2) || die "Can not open protein kinase sequence file: $protein_kinase_aln2 $!\n";
-		foreach my $pid (sort keys %shiu_cat) { print $ca_fh2 $pid."\t".$shiu_cat{$pid}."\n"; }
-		print $al_fh2 $hmm3_shiu_align;
-		$ca_fh2->close;
-		$al_fh2->close;
-
-		#################################################
-		# output rkd alignment and classification       #
-		#################################################
-		my $protein_kinase_aln3 = $output_dir."/".$input_seq."_pkaln3";
-		my $protein_kinase_cat3 = $output_dir."/".$input_seq."_pkcat3";
-
-		#my $ca_fh3 = IO::File->new(">".$protein_kinase_cat3) || die "Can not open protein kinase sequence file: $protein_kinase_cat3 $!\n";
-		#my $al_fh3 = IO::File->new(">".$protein_kinase_aln3) || die "Can not open protein kinase sequence file: $protein_kinase_aln3 $!\n";
-		#$ca_fh3->close;
-		#$al_fh3->close;
-
-		# report protein kinase number
-		print $pk_seq_num." protein kinases were identified.\n";
     	}
-	else
-	{
-		print "No protein kinase was identified.\n";
-	}
 }
 
 #################################################################
@@ -771,42 +701,6 @@ sub compare_a_b
         }
 
         return (\%match, \%hash1, \%hash2);
-}
-
-=head2 aln_to_hash
-=cut
-sub aln_to_hash
-{
-	my $aln_detail = shift;
-
-	my $ga_hash;
-
-	my %aln_hash;
-
-	my @line = split(/\n/, $aln_detail);
-
-	for(my $i=0; $i<@line; $i++)
-	{
-		my @a = split(/\t/, $line[$i]);
-
-		# filte the aligment by GA score
-		my $pfam_id = $a[1];
-		$pfam_id =~ s/\..*//;
-
-		if ( $a[9] >= $$ga_hash{$pfam_id} )
-		{
-			#print $a[9]."\t$pfam_id\t".$$ga_hash{$pfam_id}."\n";
-			if (defined $aln_hash{$a[0]})
-			{
-				$aln_hash{$a[0]}.=$line[$i]."\n";
-			}
-			else
-			{
-				$aln_hash{$a[0]} = $line[$i]."\n";
-			}
-		}
-	}
-	return %aln_hash;
 }
 
 #################################################################
@@ -1267,31 +1161,60 @@ sub itak_tf_write_out
 =cut
 sub itak_pk_classify
 {
-        my $hmmscan_hit = shift;
-	chomp($hmmscan_hit);
-	my @hit_line = split(/\n/, $hmmscan_hit);
+        my $hmmscan_detail = shift;
+	chomp($hmmscan_detail);
+	my @hit_line = split(/\n/, $hmmscan_detail);
 
 	# put hmmscan hit to hash
 	# %hit: key: protein seq ID 
 	#       value: family id
 	# %score: key: protein seq ID
 	# 	  value: best hit score for domain
-        my %hit; my %score;
-
+	# %best_hit_align: key: protein seq ID
+	# 		   value: best hit alignment
+        my %hit; my %score; my %best_hit_align;
 	foreach my $line (@hit_line) {
 		my @a = split(/\t/, $line);
 		if (defined $hit{$a[0]}) {
-			if ($a[2] > $score{$a[0]}) {
+			if ($a[9] > $score{$a[0]}) {
 				$hit{$a[0]} = $a[1];
-				$score{$a[0]} = $a[2];
+				$score{$a[0]} = $a[9];
+				$best_hit_align{$a[0]} = $line."\n";
 			}
 		} else {
 			$hit{$a[0]} = $a[1];
-			$score{$a[0]} = $a[2];
+			$score{$a[0]} = $a[9];
+			$best_hit_align{$a[0]} = $line."\n";
+			
 		}
 	}
+        return (\%hit, \%best_hit_align);
+}
 
-        return %hit;
+=head2 
+ aln_to_hash: put hmmscan alignment detail to hash
+=cut
+sub aln_to_hash
+{
+        my ($hmmscan_detail, $ga_cutoff) = @_;
+
+        my %aln_hash; # key: protein seq id; value: alignment information
+	chomp($hmmscan_detail);
+	my @detail_line = split(/\n/, $hmmscan_detail);
+	foreach my $line ( @detail_line ) {
+		my @a = split(/\t/, $line);
+		my ($pfam_id, $score, $evalue) = ($a[1], $a[9], $a[10]);
+		$pfam_id =~ s/\..*//;
+		next if (defined $$ga_cutoff{$pfam_id} && $score < $$ga_cutoff{$pfam_id});
+		next if ((!defined $$ga_cutoff{$pfam_id}) && ($evalue > 1e-3));
+
+		if ( defined $aln_hash{$a[0]} ) {
+			$aln_hash{$a[0]}.= $line."\n";
+		} else {
+			$aln_hash{$a[0]} = $line."\n";
+		}
+	}
+        return %aln_hash;
 }
 
 =head2

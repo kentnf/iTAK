@@ -39,27 +39,6 @@ elsif	($options{'t'} eq 'database')	{ itak_database(\%options, \@ARGV); }
 else	{ usage($version); }
 
 #################################################################
-# check database and rules					#
-#################################################################
-
-my $ga_hash;
-my %rules;
-my $temp_dir;
-my $bin_dir;
-my $cpus;
-my $hmmscan_command;
-my $e1;
-
-=head
-#################################################################
-# protein kinases Cat ID and It's desc to hash.                 #
-#################################################################
-my $pk_desc = $dbs_dir."/PK_class_desc";
-unless (-s $pk_desc) { die "protein kinase descriptions do not exist.\n"; }
-my $pkid_des = pk_to_hash($pk_desc);
-=cut
-
-#################################################################
 # kentnf: subroutine						#
 #################################################################
 =head2
@@ -97,27 +76,26 @@ USAGE:  perl $0 [options] input_seq
 	unless (-e $bin_dir) { die "[ERR]bin folder not exist.\n$bin_dir\n"; }
 	unless (-e $dbs_dir) { die "[ERR]database folder not exist.\n $dbs_dir\n"; }
 	
-	my $pfam_db   = $dbs_dir."/TFHMM_3.hmm";		# database for transcription factors (Pfam-A + customized)
-	my $plantp_db = $dbs_dir."/PlantsPHMM3_89.hmm";	# plantsP kinase
-	my $shiu_db   = $dbs_dir."/Plant_Pkinase_fam.hmm";	# shiu kinase database
-	foreach my $db (($pfam_db, $plantp_hmm_3, $shiu_hmm_3)) {
+	my $pfam_db    = $dbs_dir."/TFHMM_3.hmm";		# database for transcription factors (Pfam-A + customized)
+	my $plantsp_db = $dbs_dir."/PlantsPHMM3_89.hmm";	# plantsP kinase
+	my $shiu_db    = $dbs_dir."/Plant_Pkinase_fam.hmm";	# shiu kinase database
+	foreach my $db (($pfam_db, $plantsp_db, $shiu_db)) {
 		die "[ERR]database file $db\n" unless (-s $db.".h3f" && -s $db.".h3i" && -s $db.".h3m" && -s $db.".h3p");
 	}
 
-	#my $tf_rule = $dbs_dir."/TF_Rule";              	# Rules for Transcription Factors
-	#die "[ERR]Rules not exist $$tf_rule.\n" unless -s $tf_rule;
-	my %tf_rule = load_rule('TF_Rule.txt');
+	my $tf_rule = $dbs_dir."/TF_Rule.txt";              	# Rules for Transcription Factors
+	my $correct_ga = $dbs_dir."/GA_table.txt";		# update GA cutoff
+	my $pk_desc = $dbs_dir."/PK_class_desc.txt";		# PK family description (for PPC)
+	my $hmmscan_bin = $bin_dir."/hmmscan";			# hmmscan 
+	my $hmmpress_bin = $bin_dir."/hmmpress";		# hmmpress
 
-	my $correct_ga = $dbs_dir."/GA_table"; 
-	die "[ERR]GA not exist\n" unless -s $correct_ga;
+	foreach my $f (($tf_rule, $correct_ga, $pk_desc, $hmmscan_bin, $hmmpress_bin)) {
+		die "[ERR]file not exist: $f\n" unless -s $f;
+	}
+
+	my %tf_rule = load_rule($tf_rule);
 	my %ga_cutoff = load_ga_cutoff($pfam_db, $correct_ga);
-
-	#my $pk_desc = $dbs_dir."/PK_class_desc";
-	#unless (-s $pk_desc) { die "protein kinase descriptions do not exist.\n"; }
-	#my $pkid_des = pk_to_hash($pk_desc);
-
-	my $hmmscan_bin = $bin_dir."/hmmscan";			# hmmscan
-	die "[ERR]hmmscan not exist\n" unless -s $hmmscan_bin;
+	my $pkid_des = pk_to_hash($pk_desc);
 
 	# +++++ main +++++ 
 	foreach my $f (@$files)
@@ -151,16 +129,16 @@ USAGE:  perl $0 [options] input_seq
 		print "[ERR]no input proteins\n" unless -s $input_protein_f;
 
 		# ==== Part A TF identification ====
-		# A1. compare input seq with database
+		# ==== A1. compare input seq with database ====
 		my $hmmscan_command = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_pfam_hmmscan $pfam_db $input_protein_f";
 		#run_cmd($hmmscan_command);
 		run_cmd($hmmscan_command) unless -s $tmp_pfam_hmmscan; # test code
 		my ($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($tmp_pfam_hmmscan);
 
-		# A2. TF identification
+		# ==== A2. TF identification ====
 		my %qid_tid = itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%ga_cutoff, \%tf_rule);
 
-		# A3. save the result
+		# ==== A3. save the result ====
 		my $output_sequence	  = "$output_dir/tf_sequence.txt";
 		my $output_alignment	  = "$output_dir/tf_alignment.txt";
 		my $output_classification = "$output_dir/tf_classification.txt";
@@ -196,30 +174,78 @@ USAGE:  perl $0 [options] input_seq
                 my $tmp_shiu_hmmscan    = "$temp_dir/protein_seq.shiu.hmmscan.txt";
 		#my $tmp_rkd_hmmscan     = "$temp_dir/protein_seq.rkd.hmmscan.txt";
 
-		my $plantsp_hmmscan_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_plantsp_hmmscan $plantp_db $tmp_pkinase_seq";
-		my $shiu_hmmscan_cmd    = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_shiu_hmmscan    $shiu_db   $tmp_pkinase_seq";
+		my $plantsp_hmmscan_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_plantsp_hmmscan $plantsp_db $tmp_pkinase_seq";
+		my $shiu_hmmscan_cmd    = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_shiu_hmmscan    $shiu_db    $tmp_pkinase_seq";
 		#my $rkd_hmmscan_cmd     = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_rkd_hmmscan     $rkd_db    $tmp_pkinase_seq";
 
 		run_cmd($plantsp_hmmscan_cmd) unless -s $tmp_plantsp_hmmscan;
 		run_cmd($shiu_hmmscan_cmd) unless -s $tmp_shiu_hmmscan;
-		my ($hmmscan_hit_2, $hmmscan_detail_2) = itak::parse_hmmscan_result($tmp_plantsp_hmmscan);
-		my ($hmmscan_hit_3, $hmmscan_detail_3) = itak::parse_hmmscan_result($tmp_shiu_hmmscan);
-		
-		my %pkinase_cat = get_classification($hmmscan_hit_2);
-                my %shiu_cat = get_classification($hmmscan_hit_3);
+		my ($plantsp_hit, $plantsp_detail) = itak::parse_hmmscan_result($tmp_plantsp_hmmscan);
+		my ($shiu_hit, $shiu_detail)       = itak::parse_hmmscan_result($tmp_shiu_hmmscan);
 
+		# ==== B3. PK classification ====		
+		my %plantsp_cat = itak_pk_classify($plantsp_hit);
+                my %shiu_cat = itak_pk_classify($shiu_hit);
 
-		# ==== B3. PK classification ====
+                # ==== B4 classification of sub pkinase ====
+		my @wnk1 = ("$dbs_dir/wnk1_hmm_domain/WNK1_hmm",   "30" , "PPC:4.1.5", "PPC:4.1.5.1");
+		my @mak  = ("$dbs_dir/mak_hmm_domain/MAK_hmm", "460.15" , "PPC:4.5.1", "PPC:4.5.1.1");
+		my @sub = (\@wnk1, \@mak);
 
+		foreach my $s ( @sub ) {
+			# check array info for sub classify
+			die "[ERR]sub classify info ".join(",", @$s)."\n" unless scalar(@$s) == 4;
+			my ($hmm_profile, $cutoff, $cat, $sub_cat) = @$s;
 
+			# get seq for sub classify
+			my $seq_num = 0;
+			my $ppc_seq = "$temp_dir/temp_ppc_seq";
+			my $ppfh = IO::File->new(">".$ppc_seq) || die $!;
+			foreach my $seq_id (sort keys %plantsp_cat) {
+				if ( $plantsp_cat{$seq_id} eq $cat ) {
+               				die "[ERR]seq id: $seq_id\n" unless defined $seq_info{$seq_id}{'seq'};
+                                	print $ppfh ">".$seq_id."\n".$seq_info{$seq_id}{'seq'}."\n";
+                                	$seq_num++;
+				}
+                        }
+			$ppfh->close;
 
+			# next if there is no seq
+			next if $seq_num == 0;
 
-                my $protein_kinase_aln1 = $output_dir."/".$input_seq."_pkaln1";
-                my $protein_kinase_cat1 = $output_dir."/".$input_seq."_pkcat1";
+			# hmmscan and parse hmm result
+        		my $ppc_hmm_result = $temp_dir."/temp_ppc_sub_hmmscan.txt";
+        		my $hmm_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $ppc_hmm_result $hmm_profile $ppc_seq";
+			run_cmd($hmm_cmd) unless -s $ppc_hmm_result;
+        		my ($ppc_hits, $ppc_detail) = itak::parse_hmmscan_result($ppc_hmm_result);
+			my @hit = split(/\n/, $ppc_hits);
+
+			foreach my $h (@hit) {
+				my @a = split(/\t/, $h);
+				$plantsp_cat{$a[0]} = $sub_cat if $a[2] >= $cutoff;
+			}
+                }
+
+                # %pkinases_cat = get_wnk1(\%pkinases_cat, "$dbs_dir/wnk1_hmm_domain/WNK1_hmm" , "30" ,"PPC:4.1.5", "PPC:4.1.5.1");""
+                # $$pkid_des{"PPC:4.1.5.1"} = "WNK like kinase - with no lysine kinase";
+                # %pkinases_cat = get_wnk1(\%pkinases_cat, "$dbs_dir/mak_hmm_domain/MAK_hmm" , "460.15" ,"PPC:4.5.1", "PPC:4.5.1.1");
+                # $$pkid_des{"PPC:4.5.1.1"} = "Male grem cell-associated kinase (mak)";
         
-                my $ca_fh1 = IO::File->new(">".$protein_kinase_cat1) || die "Can not open protein kinase sequence file: $protein_kinase_cat1 $!\n";
-                my $al_fh1 = IO::File->new(">".$protein_kinase_aln1) || die "Can not open protein kinase sequence file: $protein_kinase_aln1 $!\n";
+		#foreach my $pid (sort keys %pkinases_cat) {
+                #        print $ca_fh1 $pid."\t".$pkinases_cat{$pid}."\t".$$pkid_des{$pkinases_cat{$pid}}."\n";
+                #}
+                #$ca_fh1->close;
 
+		# ==== B5 save result =====
+		# output plantsp classification
+		my $ppc_cat = $output_dir."/PPC_classification.txt";
+		my $ppc_aln = $output_dir."/PPC_alignment.txt";
+
+                my $ca_fh1 = IO::File->new(">".$ppc_cat) || die $!;
+                my $al_fh1 = IO::File->new(">".$ppc_aln) || die $!;
+		foreach my $pid (sort keys %plantsp_cat) { print $ca_fh1 $pid."\t".$plantsp_cat{$pid}."\t".$$pkid_des{$plantsp_cat{$pid}}."\n"; }
+
+=head
                 foreach my $pid (sort keys %pkinases_cat)
                 {
                         if (defined $pkinase_aln{$pid})
@@ -230,7 +256,7 @@ USAGE:  perl $0 [options] input_seq
                         {
                                 die "Error! Do not have alignments in hmm3 parsed result\n";
                         }
-                        delete $pkinase_id{$pid};       
+                        delete $pkinase_id{$pid};
                 }
 
                 foreach my $pid (sort keys %pkinase_id)
@@ -246,58 +272,20 @@ USAGE:  perl $0 [options] input_seq
                                 die "Error! Do not have alignments in hmm3 parsed result\n";
                         }
                 }
+=cut
+		$ca_fh1->close;
                 $al_fh1->close;
+		
+                # output Shiu classification
+		my $shiu_cat = $output_dir."/shiu_classification.txt";
+                my $shiu_aln = $output_dir."/shiu_alignment.txt";
 
-                # ==== B4 classification of sub pkinase ====
-                # $input, $hmm, $score, $cat_id, $new_cat_id
-
-		my @wnk1 = ("$dbs_dir/wnk1_hmm_domain/WNK1_hmm",   "30" , "PPC:4.1.5", "PPC:4.1.5.1");
-		my @mak  = ("$dbs_dir/mak_hmm_domain/MAK_hmm", "460.15" , "PPC:4.5.1", "PPC:4.5.1.1");
-		my @sub = (\@wnk1, \@mak);
-
-		foreach my $s ( @sub ) {
-			# check array info for sub classify
-			die "[ERR]sub classify info ".join(",", @$s)."\n" unless scalar(@$s) == 4;
-			my ($hmm_profile, $cutoff, $cat, $sub_cat) = @$s;
-
-			# get seq for sub classify
-			my $seq_num = 0;
-			my $ppc_seq = "$temp_dir/temp_ppc_seq";
-			my $ppfh = IO::File->new(">".$ppc_seq) || die $!;
-			foreach my $seq_id (sort keys %pkinase_cat) {
-				if ( $pk_cat{$seq_id} eq $cat )
-               			die "[ERR]seq id: $seq_id\n" unless defined $seq_hash{$seq_id};
-                                print $ppfh ">".$seq_id."\n".$seq_hash{$seq_id}."\n";
-                                $seq_num++;
-                        }
-			$ppfh->close;
-
-			# next if there is no seq
-			next if $seq_num == 0;
-
-			# hmmscan and parse hmm result
-        		my $ppc_hmm_result = $temp_dir."/temp_ppc_hmm3_result";
-        		my $hmm_cmd = $bin_dir."/hmmscan --acc --notextw --cpu $cpus -o $ppc_hmm_result $hmm $ppcseq";
-			run_cmd($hmm_cmd) unless -s $ppc_hmm_result;
-        		my ($ppc_hits, $ppc_detail) = parse_hmmscan_result($ppc_hmm_result);
-			my @hit = split(/\n/, $ppc_hits);
-
-			foreach my $h (@hit) {
-				my @a = split(/\t/, $h);
-				$pk_cat{$a[0]} = $sub_cat if $a[2] >= $cutoff;
-			}
-                }
-
-                # %pkinases_cat = get_wnk1(\%pkinases_cat, "$dbs_dir/wnk1_hmm_domain/WNK1_hmm" , "30" ,"PPC:4.1.5", "PPC:4.1.5.1");""
-                # $$pkid_des{"PPC:4.1.5.1"} = "WNK like kinase - with no lysine kinase";
-                # %pkinases_cat = get_wnk1(\%pkinases_cat, "$dbs_dir/mak_hmm_domain/MAK_hmm" , "460.15" ,"PPC:4.5.1", "PPC:4.5.1.1");
-                # $$pkid_des{"PPC:4.5.1.1"} = "Male grem cell-associated kinase (mak)";
-        
-                foreach my $pid (sort keys %pkinases_cat) {
-                        print $ca_fh1 $pid."\t".$pkinases_cat{$pid}."\t".$$pkid_des{$pkinases_cat{$pid}}."\n";
-                }
-                $ca_fh1->close;
-
+                my $ca_fh2 = IO::File->new(">".$shiu_cat) || die $!;
+                my $al_fh2 = IO::File->new(">".$shiu_aln) || die $!;
+                foreach my $pid (sort keys %shiu_cat) { print $ca_fh2 $pid."\t".$shiu_cat{$pid}."\n"; }
+                #print $al_fh2 $hmm3_shiu_align;
+                $ca_fh2->close;
+                $al_fh2->close;	
 
 		print $report_info."\n";
 		# remove temp folder
@@ -602,6 +590,7 @@ sub identify_domain
 	# $pid_did    -- key: protein sequence id;  value: domain order id
 	# $hsp_hit    -- key: domain order id;      value: PfamID
 	# $hsp_detail -- key: domain order id;      value: aligment_detail
+	my $ga_hash; my %rules;
 	my ($pid_did, $hsp_hit, $hsp_detail) = parse_format_result($all_detail, $ga_hash);
 
 	# 3. Parse rule list file to produce rules
@@ -784,29 +773,13 @@ sub compare_a_b
         return (\%match, \%hash1, \%hash2);
 }
 
-=head2 pk_to_hash
-
-=cut
-sub pk_to_hash
-{
-	my $file = shift;
-	my %hash;
-	my $pfh = IO::File->new($file) || die "Can not open protein kinase description file: $file $!\n";
-	while(<$pfh>)
-	{
-		chomp;
-		my @pm = split(/\t/, $_, 2);
-		$hash{$pm[0]} = $pm[1];
-	}
-	$pfh->close;
-	return (\%hash);
-}
-
 =head2 aln_to_hash
 =cut
 sub aln_to_hash
 {
 	my $aln_detail = shift;
+
+	my $ga_hash;
 
 	my %aln_hash;
 
@@ -1289,34 +1262,54 @@ sub itak_tf_write_out
 	$out3->close;
 }
 
-=head2 get_classification
- output the hit with highest score
+=head2 
+ itak_pk_classify -- classify pkinase
 =cut
-sub get_classification
+sub itak_pk_classify
 {
-        my $simple_hmm2_result = shift;
-        my @array = split(/\n/, $simple_hmm2_result);
+        my $hmmscan_hit = shift;
+	chomp($hmmscan_hit);
+	my @hit_line = split(/\n/, $hmmscan_hit);
 
+	# put hmmscan hit to hash
+	# %hit: key: protein seq ID 
+	#       value: family id
+	# %score: key: protein seq ID
+	# 	  value: best hit score for domain
         my %hit; my %score;
-        for(my $i=0; $i<@array; $i++)
-        {
-                my @a = split(/\t/, $array[$i]);
 
-                if (defined $hit{$a[0]})
-                {
-                        if ($a[2] > $score{$a[0]})
-                        {
-                                $hit{$a[0]} = $a[1];
-                                $score{$a[0]} = $a[2];
-                        }
-                }
-                else
-                {
-                        $hit{$a[0]} = $a[1];
-                        $score{$a[0]} = $a[2];
-                }
-        }
+	foreach my $line (@hit_line) {
+		my @a = split(/\t/, $line);
+		if (defined $hit{$a[0]}) {
+			if ($a[2] > $score{$a[0]}) {
+				$hit{$a[0]} = $a[1];
+				$score{$a[0]} = $a[2];
+			}
+		} else {
+			$hit{$a[0]} = $a[1];
+			$score{$a[0]} = $a[2];
+		}
+	}
+
         return %hit;
+}
+
+=head2
+ pk_to_hash -- load plantsp family description to hash
+=cut
+sub pk_to_hash
+{
+        my $file = shift;
+        my %hash;
+        my $pfh = IO::File->new($file) || die "Can not open protein kinase description file: $file $!\n";
+        while(<$pfh>)
+        {
+                chomp;
+                my @pm = split(/\t/, $_, 2);
+                $hash{$pm[0]} = $pm[1];
+        }
+        $pfh->close;
+        return (\%hash);
 }
 
 =head2

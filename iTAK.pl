@@ -189,8 +189,8 @@ USAGE:  perl $0 [options] input_seq
                 my ($shiu_cat, $shiu_aln) = itak_pk_classify($shiu_detail);
 
                 # ==== B4 classification of sub pkinase ====
-		my @wnk1 = ("$dbs_dir/wnk1_hmm_domain/WNK1_hmm",   "30" , "PPC:4.1.5", "PPC:4.1.5.1");
-		my @mak  = ("$dbs_dir/mak_hmm_domain/MAK_hmm", "460.15" , "PPC:4.5.1", "PPC:4.5.1.1");
+		my @wnk1 = ("$dbs_dir/Pkinase_sub_WNK1.hmm",   "30" , "PPC:4.1.5", "PPC:4.1.5.1");
+		my @mak  = ("$dbs_dir/Pkinase_sub_MAK.hmm", "460.15" , "PPC:4.5.1", "PPC:4.5.1.1");
 		my @sub = (\@wnk1, \@mak);
 
 		foreach my $s ( @sub ) {
@@ -317,12 +317,19 @@ USAGE:  perl $0 -t database  ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfa
 	unless (-e $bin_dir) { die "[ERR]bin folder not exist.\n$bin_dir\n"; }
 	unless (-e $dbs_dir) { die "[ERR]database folder not exist.\n $dbs_dir\n"; }
 
-	my $pfam_db = $dbs_dir."/TFHMM_3.hmm";                  # database for transcription factors (Pfam-A + customized)
-	die "[ERR]database exist $pfam_db\n" if -s $pfam_db;
-	my $TF_selfbuild = $dbs_dir."/TF_selfbuild.hmm";
-	die "[ERR]selfbuild hmm not exist $TF_selfbuild\n" unless -s $TF_selfbuild;
+	my $TF_selfbuild = $dbs_dir."/TF_selfbuild.hmm";	# selfbuild hmm
+	my $plantsp_db	 = $dbs_dir."/PlantsPHMM3_89.hmm";	# plantsP kinase
+	my $shiu_db	 = $dbs_dir."/Plant_Pkinase_fam.hmm";	# shiu kinase database
+	my $Psub_wnk1	 = $dbs_dir."/Pkinase_sub_WNK1.hmm";	# wnk1 hmm
+	my $Psub_MAK 	 = $dbs_dir."/Pkinase_sub_MAK.hmm";	# MAK hmm
 	my $hmmpress_bin = $bin_dir."/hmmpress";		# hmmspress
-	die "[ERR]hmmpress not exist\n" unless -s $hmmpress_bin;
+
+	foreach my $f (($TF_selfbuild,$plantsp_db,$shiu_db,$Psub_wnk1,$Psub_MAK,$hmmpress_bin)) {
+		die "[ERR]file not exist: $f\n" unless -s $f;
+	}
+
+	my $pfam_db = $dbs_dir."/TFHMM_3.hmm";                  # database for transcription factors (Pfam-A + customized)
+	warn "[ERR]database exist $pfam_db\n" if -s $pfam_db;
 
 	# build database;
 	my $pfam_a_gz = $$files[0];	$pfam_a_gz =~ s/.*\///;
@@ -333,14 +340,18 @@ USAGE:  perl $0 -t database  ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfa
 	# run_cmd("gunzip $pfam_a_gz");
 	# run_cmd("cat $pfam_a $TF_selfbuild > $pfam_db");
 	# run_cmd("$hmmpress_bin $pfam_db");
-	# unlink($pfam_a);
-	
 	print qq'
 wget $$files[0]
 gunzip $pfam_a_gz
 cat $pfam_a $TF_selfbuild > $pfam_db
-$hmmpress_bin $pfam_db
 rm $pfam_a
+
+# hmmpress database
+$hmmpress_bin $pfam_db
+$hmmpress_bin $plantsp_db
+$hmmpress_bin $shiu_db
+$hmmpress_bin $Psub_wnk1
+$hmmpress_bin $Psub_MAK
 
 ';
 	exit;

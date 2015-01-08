@@ -51,6 +51,7 @@ sub itak_identify
 	my $usage =qq'
 USAGE:  perl $0 [options] input_seq 
 
+	-m  [mode]	quick or normal (default: normal) 
         -a  [Integer]   number of CPUs used for hmmscan. (default = 1)
         -o  [String]    Name of the output directory. ( default = \'input file
                         name\' + \'_output\')
@@ -68,18 +69,23 @@ USAGE:  perl $0 [options] input_seq
 	}
 	
 	my $cpu = '20';
-	$cpu = $$options{'p'} if defined $$options{'p'} &&  $$options{'p'} > 0; 
+	$cpu = $$options{'p'} if (defined $$options{'p'} && $$options{'p'} > 0); 
+
+	my $mode = 'normal';
+	$mode = 'quick' if (defined $$options{'m'} && $$options{'m'} eq 'quick');
 
 	# +++++ set database and script +++++
 	my $bin_dir = ${FindBin::RealBin}."/bin";
 	my $dbs_dir = ${FindBin::RealBin}."/database";
 	unless (-e $bin_dir) { die "[ERR]bin folder not exist.\n$bin_dir\n"; }
 	unless (-e $dbs_dir) { die "[ERR]database folder not exist.\n $dbs_dir\n"; }
-	
-	my $pfam_db    = $dbs_dir."/TFHMM_3.hmm";		# database for transcription factors (Pfam-A + customized)
+
+	my $tfam_db	= $dbs_dir."/Tfam_domain.hmm";		# database for transcription factors (subset of Pfam-A + customized). for quick mode
+	my $pfam_db	= $dbs_dir."/Pfam-A.hmm";		# Pfam-A
+	my $sfam_db	= $dbs_dir."/TF_selfbuild.hmm";		# self-build 
 	my $plantsp_db = $dbs_dir."/PlantsPHMM3_89.hmm";	# plantsP kinase
 	my $shiu_db    = $dbs_dir."/Plant_Pkinase_fam.hmm";	# shiu kinase database
-	foreach my $db (($pfam_db, $plantsp_db, $shiu_db)) {
+	foreach my $db (($tfam_db, $pfam_db, $sfam_db, $plantsp_db, $shiu_db)) {
 		die "[ERR]database file $db\n" unless (-s $db.".h3f" && -s $db.".h3i" && -s $db.".h3m" && -s $db.".h3p");
 	}
 
@@ -94,7 +100,9 @@ USAGE:  perl $0 [options] input_seq
 	}
 
 	my %tf_rule = load_rule($tf_rule);
-	my %ga_cutoff = load_ga_cutoff($pfam_db, $correct_ga);
+	my %ga_cutoff;
+	%ga_cutoff = load_ga_cutoff($pfam_db, $correct_ga, $sfam_db) if $mode eq 'normal';
+	%ga_cutoff = load_ga_cutoff($tfam_db, $correct_ga, $sfam_db) if $mode eq 'quick';
 	my $pkid_des = pk_to_hash($pk_desc);
 
 	# +++++ main +++++ 
@@ -130,10 +138,23 @@ USAGE:  perl $0 [options] input_seq
 
 		# ==== Part A TF identification ====
 		# ==== A1. compare input seq with database ====
-		my $hmmscan_command = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_pfam_hmmscan $pfam_db $input_protein_f";
-		#run_cmd($hmmscan_command);
-		run_cmd($hmmscan_command) unless -s $tmp_pfam_hmmscan; # test code
-		my ($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($tmp_pfam_hmmscan);
+		my ($hmmscan_hit_1, $hmmscan_detail_1);
+
+		if ($mode eq 'normal') {
+			my $hmmscan_command1 = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_pfam_hmmscan.a $pfam_db $input_protein_f";
+			my $hmmscan_command2 = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_pfam_hmmscan.b $sfam_db $input_protein_f";
+			run_cmd($hmmscan_command1) unless -s $tmp_pfam_hmmscan.".a"; # test code
+			run_cmd($hmmscan_command2) unless -s $tmp_pfam_hmmscan.".b"; # test code
+			($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($tmp_pfam_hmmscan.".a");
+			my ($hmmscan_hit_2, $hmmscan_detail_2) = itak::parse_hmmscan_result($tmp_pfam_hmmscan.".b");
+			$hmmscan_hit_1.= $hmmscan_hit_2;
+			$hmmscan_detail_1.= $hmmscan_detail_2;
+		} else {
+			my $hmmscan_command = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_pfam_hmmscan $tfam_db $input_protein_f";
+			run_cmd($hmmscan_command) unless -s $tmp_pfam_hmmscan; # test code
+			($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($tmp_pfam_hmmscan);
+		}
+
 		my %align_pfam_hash = aln_to_hash($hmmscan_detail_1, \%ga_cutoff);
 
 		# ==== A2. TF identification ====
@@ -162,6 +183,8 @@ USAGE:  perl $0 [options] input_seq
 				$pkinase_id{$a[0]} = 1 if $a[2] >= $ga_cutoff{$a[1]};
 			}
 		}
+
+		next if scalar(keys(%pkinase_id)) == 0;
 		
 		my $tmp_pkinase_seq = $temp_dir."/pkinase_seq.fa"; 
 		my $out1 = IO::File->new(">".$tmp_pkinase_seq) || die $!;
@@ -568,7 +591,7 @@ sub print_rule
 =cut
 sub load_ga_cutoff 
 {
-	my ($pfam_db, $correct_ga) = @_;
+	my ($pfam_db, $correct_ga, $sfam_db) = @_;
 
 
 	# put GA cutoff to hash
@@ -576,6 +599,28 @@ sub load_ga_cutoff
 	# value: GA score
 	my %ga_cutoff;
 	my ($pfam_id, $ga_score) = ('', '');
+
+	my $fh0 = IO::File->new($sfam_db) || die $!;
+	while(<$fh0>)
+	{
+		chomp;
+		if ($_ =~ m/^ACC\s+(\S+)/) {
+			$pfam_id = $1;
+			$pfam_id =~ s/\..*//;
+		} elsif ($_ =~ m/^GA\s+(\S+)/) {
+			$ga_score = $1;
+		} elsif ($_ eq "//") {
+			warn "[WARN]no pfam id\n" unless $pfam_id;
+			warn "[WARN]no ga score $pfam_id\n" unless $ga_score;
+			$ga_cutoff{$pfam_id} = $ga_score;
+			$pfam_id = '';
+			$ga_score = '';
+		} else {
+			next;
+		}
+	}
+	$fh0->close;
+
 	my $fh1 = IO::File->new($pfam_db) || die $!;
 	while(<$fh1>)
 	{
@@ -586,8 +631,8 @@ sub load_ga_cutoff
 		} elsif ($_ =~ m/^GA\s+(\S+)/) {
 			$ga_score = $1;
 		} elsif ($_ eq "//") {
-			print "[ERR]no pfam id\n" unless $pfam_id;
-			print "[ERR]no ga score $pfam_id\n" unless $ga_score;
+			warn "[WARN]no pfam id\n" unless $pfam_id;
+			warn "[WARN]no ga score $pfam_id\n" unless $ga_score;
 			$ga_cutoff{$pfam_id} = $ga_score;
 			$pfam_id = '';
 			$ga_score = '';
@@ -598,19 +643,22 @@ sub load_ga_cutoff
 	$fh1->close;
 
 	# correct GA cutoff
+	my $stop = 0;
 	my $fh2 = IO::File->new($correct_ga) || die $!;
 	while(<$fh2>)
 	{
 		chomp;
+		next if $_ =~ m/^#/;
 		my @a = split(/\t/, $_);
 		($pfam_id, $ga_score) = @a;
 		$pfam_id =~ s/\..*//;
-		die "[ERR]no correct pfam id  $_\n" unless defined $ga_cutoff{$pfam_id};
-		die "[ERR]no correct ga score $_\n" unless $ga_score;
+		warn "[ERR]no correct pfam id  $_\n" and $stop = 1 unless defined $ga_cutoff{$pfam_id};
+		warn "[ERR]no correct ga score $_\n" and $stop = 1 unless $ga_score;
 		$ga_cutoff{$pfam_id} = $ga_score;
 	}
 	$fh2->close;
 
+	exit if $stop == 1;
 	# print scalar(keys(%ga_cutoff)). "record has GA score\n";
 	return %ga_cutoff;
 }
@@ -640,8 +688,8 @@ sub itak_tf_identify
 	my %qid_tid;
 
 	# put hits domains to hash : query_hits
-	# key: query ID
-	# value: array of hmm hits
+	# key: query ID, score
+	# value: array of hmm hits, and score
 	# * filter hits with lower score using GA cutoff
 	my %query_hits;
 	my ($query_id, $pfam_id, $score, $evalue);
@@ -656,24 +704,22 @@ sub itak_tf_identify
 		next if $score < $$ga_cutoff{$pfam_id};
 
 		if (defined $query_hits{$b[0]}) {
-			$query_hits{$b[0]}.="\t".$pfam_id;
+			$query_hits{$b[0]}{'pid'}.="\t".$pfam_id;
+			$query_hits{$b[0]}{'score'}.="\t".$score;
 		} else {
-			$query_hits{$b[0]} = $pfam_id;
+			$query_hits{$b[0]}{'pid'} = $pfam_id;
+			$query_hits{$b[0]}{'score'} = $score;
 		}
 	}
 
-	# compare query_hits with rules
+	# compare query_hits with rules, 
 	foreach my $qid (sort keys %query_hits)
 	{
-		my $hits = $query_hits{$qid};
+		my $hits = $query_hits{$qid}{'pid'};		# do not use hash for hit two same pfam domain
+		my $score = $query_hits{$qid}{'score'};	
 		# print "$qid\t$hits\n";
-		my @rule_id = compare_rule($hits, $tf_rule);
-
-		if (scalar @rule_id > 0) {
-			foreach my $tid ( @rule_id ) {
-				$qid_tid{$qid} = $tid;
-			}
-		}
+		my $rule_id = compare_rule($hits, $score, $tf_rule);
+		$qid_tid{$qid} = $rule_id if $rule_id ne 'NA';
 	}
 
 	return %qid_tid;
@@ -685,7 +731,7 @@ sub itak_tf_identify
 =cut
 sub compare_rule
 {
-	my ($hmm_hit, $rule_pack) = @_;
+	my ($hmm_hit, $hmm_score, $rule_pack) = @_;
 	
 	my %rule = %$rule_pack; # unpack the rule
 
@@ -695,10 +741,14 @@ sub compare_rule
 	# 1, partially match
 	# 2, full match
 	# the assign family to each protein according hits and ruls
-	my @rule_id;
+	my $rule_id = 'NA';
 
 	my @hits = split(/\t/, $hmm_hit);
+	my @score = split(/\t/, $hmm_score);
+	die "[ERR]hit num do not mach score num\n" unless (scalar @hits == scalar @score);
 
+	my $total_domain = 0;   # number of required domains used in classification
+	my $total_score = 0;    # total of score of required domains
 	foreach my $rid (sort keys %rule) {
 		my $required_h = $rule{$rid}{'required'};
 		my $auxiiary_h = $rule{$rid}{'auxiiary'};
@@ -709,7 +759,7 @@ sub compare_rule
 		if ($forbidden_h ne 'NA') {
 			foreach my $forbidden (sort keys %$forbidden_h) {
 				my @f = split(/,/, $forbidden);
-				my $match_status = compare_array(\@hits, \@f);
+				my ($match_status, $match_score) = compare_array(\@hits, \@score, \@f);
 				$f_status = 1 if $match_status > 0;
 			}
 		}
@@ -718,39 +768,60 @@ sub compare_rule
 		# compare required with hits
 		my $r_status = 0;
 		foreach my $required (sort keys %$required_h) {
-			my @r = split(/,/, $required);
-			my $match_status = compare_array(\@hits, \@r);
+			my @r = split(/,/, $required);	
+			my ($match_status, $match_score) = compare_array(\@hits, \@score, \@r);
+			my $domain_num = scalar(@r);
 			$r_status = 1 if $match_status == 2;
-		}
+			if ($match_status == 2) {
 
-		# compare auxiiary with hits
-		my $a_status = 0;
-		if ($auxiiary_h ne 'NA') {
-			foreach my $auxiiary (sort keys %$auxiiary_h) {
-				my @a = split(/,/, $auxiiary);
-				my $match_status = compare_array(\@hits, \@a);
-				$a_status = 1 if $match_status == 2;
+				print "$rid\t$domain_num\t$match_score\n";
+
+				if ($domain_num > $total_domain && $match_score > $total_score) {
+					$total_domain = $domain_num;
+					$total_score  = $match_score;
+					$rule_id = $rid;
+				}
 			}
-			push(@rule_id, $rid) if ($r_status == 1 && $a_status == 1);
-
-		} else {
-			push(@rule_id, $rid) if $r_status == 1;
 		}
+
+		# compare auxiiary with hits, may use it in the future
+		# my $a_status = 0;
+		# if ($auxiiary_h ne 'NA') {
+		#	foreach my $auxiiary (sort keys %$auxiiary_h) {
+		#		my @a = split(/,/, $auxiiary);
+		#		my $match_status = compare_array(\@hits, \@a);
+		#		$a_status = 1 if $match_status == 2;
+		#	}
+		#	push(@rule_id, $rid) if ($r_status == 1 && $a_status == 1);
+		#
+		# } else {
+		#	push(@rule_id, $rid) if $r_status == 1;
+		# }
 	}
-	return @rule_id;
+	return $rule_id;
 }
 
 # sub for compare rule
 sub compare_array
 {
-	my ($array_A, $array_B) = @_;
+	my ($array_A, $score, $array_B) = @_;
 	my @a = @$array_A;
-	my @b = @$array_B;	
+	my @b = @$array_B;
+	my @s = @$score;
 
 	# convert array to hash
-	my %ua; my %ub;
+	# %ua: key: pfam_id, value: num
+	# %ub: key: required_pfam_id, value: num
+	# %sa: key: pfam_id, value: score array
+	my %ua; my %ub; my %sa;
 	foreach my $a (@a) {
 		if (defined $ua{$a}) { $ua{$a}++; } else { $ua{$a} = 1; }
+		my $score = shift @s;
+		if (defined $sa{$a}) { 
+			$sa{$a}.="\t".$score;
+		} else {
+			$sa{$a} = $score;
+		}
 	}
 
 	foreach my $b (@b) {
@@ -758,10 +829,19 @@ sub compare_array
 	}
 	
 	# compare two hash
+	# find the best score for match
 	my $match = 0;
-	foreach my $b (sort keys %ub) {
-		if (defined $ua{$b} && $ua{$b} >= $ub{$b}) {
+	my $match_score = 0;
+	foreach my $d (sort keys %ub) {
+		if (defined $ua{$d} && $ua{$d} >= $ub{$d}) {
 			$match++;
+			my @s = split(/\t/, $sa{$d});
+			my $n = $ub{$d};
+			foreach my $s (sort {$b<=>$a} @s) {
+				$match_score = $match_score + $s;
+				$n--;
+				last if $n == 0;		
+			}
 		}
 	}
 
@@ -775,7 +855,7 @@ sub compare_array
 		$match_status = 2;
 	}
 
-	return $match_status; 
+	return ($match_status, $match_score); 
 }
 
 =head2
@@ -944,7 +1024,4 @@ USAGE:  perl $0 -t [tool]
 	print $usage;
 	exit;
 }
-
-
-
 

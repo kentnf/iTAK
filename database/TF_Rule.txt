@@ -34,7 +34,7 @@
 
 ID:T0001
 Name:AP2
-Family:AP2/ERF->AP2
+Family:AP2-ERF->AP2
 Required:PF00847#2
 Auxiiary:NA
 Forbidden:NA
@@ -44,7 +44,7 @@ Desc:NA
 
 ID:T0002
 Name:RAV
-Family:AP2/ERF->RAV
+Family:AP2-ERF->RAV
 Required:PF00847#1--PF02362#1
 Auxiiary:NA
 Forbidden:NA
@@ -64,7 +64,7 @@ Desc:NA
 
 ID:T0004
 Name:ERF
-Family:AP2/ERF->ERF
+Family:AP2-ERF->ERF
 Required:PF00847#1
 Auxiiary:NA
 Forbidden:NA
@@ -83,8 +83,8 @@ Desc:NA
 //
 
 ID:T0006
-Name:BBR/BPC
-Family:BBR/BPC
+Name:BBR-BPC
+Family:BBR-BPC
 Required:PF06217#1
 Auxiiary:NA
 Forbidden:NA
@@ -184,7 +184,7 @@ Desc:NA
 
 ID:T0016
 Name:C2H2
-Family:C2C2
+Family:C2H2
 Required:PF00096#1
 Auxiiary:NA
 Forbidden:PF00628#1:PF00929#1
@@ -205,8 +205,7 @@ Desc:NA
 ID:T0018
 Name:CAMTA
 Family:CAMTA
-Required:PF03859#1
-# kentnf check 
+Required:PF03859#1--PF00612#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -224,8 +223,8 @@ Desc:NA
 //
 
 ID:T0020
-Name:E2F-DB
-Family:E2F-DB
+Name:E2F-DP
+Family:E2F-DP
 Required:PF02319#1
 Auxiiary:NA
 Forbidden:NA
@@ -256,8 +255,8 @@ Desc:NA
 ID:T0023
 Name:ARR-B
 Family:GARP->ARR-B
-Required:G2-like#1--PF00072#1
-# kentnf 
+Required:G2-like#1--PF00249#1--PF00072#1
+# PlantTFDB do not have Myb_DNA-bindg(PF00249) domain 
 Auxiiary:NA
 Forbidden:PF06203#1
 Type:TF
@@ -297,8 +296,8 @@ Desc:NA
 ID:T0027
 Name:GRF
 Family:GRF
-Required:PF08897#1
-# kentnf 
+Required:PF08897#1--PF08880#1
+# PlantTFDB do not have QLQ(PF08880) domain 
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -308,8 +307,8 @@ Desc:NA
 ID:T0028
 Name:HD-ZIP
 Family:HB->HD-ZIP
-Required:PF00046#1--PF01852#1--HD-ZIP#1
-# kentnf
+Required:PF00046#1--PF01852#1:HD-ZIP#1
+# PlantTFDB do not provide HD-ZIP domain
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -319,7 +318,8 @@ Desc:NA
 ID:T0029
 Name:TALE
 Family:HB->TALE
-Required:PF00046#1--PF03798#1--BELL#1
+Required:PF00046#1--PF03798#1:BELL#1
+# PlantTFDB do not provide Bell domain
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -330,6 +330,7 @@ ID:T0030
 Name:WOX
 Family:HB->WOX
 Required:PF00046#1--WusType#1
+# PlantTFDB do not provide WusType domain
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -357,9 +358,9 @@ Desc:NA
 //
 
 ID:T0033
-Name:HRT-like
-Family:HRT-like
-Required:HRT-like#1
+Name:HRT
+Family:HRT
+Required:HRT#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -427,11 +428,11 @@ Desc:NA
 //
 
 ID:T0040
-Name:MYB_related
-Family:MYB_superfamily->MYB_related
+Name:MYB-related
+Family:MYB_superfamily->MYB-related
 Required:PF00249#1
 Auxiiary:NA
-Forbidden:PF04433#1;PF01388#1;PF00072#1;PF00176#1;G2-like#1;trihelix#1
+Forbidden:PF04433#1;PF01388#1;PF00072#1;PF00176#1;G2-like#1;Trihelix#1
 Type:TF
 Desc:NA
 //
@@ -460,7 +461,6 @@ ID:T0043
 Name:NF-YA
 Family:CCAAT->NF-YA
 Required:PF02045#1
-# kentnf
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -501,7 +501,7 @@ ID:T0047
 Name:NOZZLE
 Family:NOZZLE
 Required:PF08744#1
-# kentnf
+# Same as NZZ/SPL in PlantTFDB
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -521,8 +521,8 @@ Desc:NA
 ID:T0049
 Name:SAP
 Family:SAP
-Required:STER-AP#1
-# kentnf
+Required:STER_AP#1
+# Same as SAP in PlantTFDB
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -610,8 +610,8 @@ Desc:NA
 //
 
 ID:T0058
-Name:ZF-HD
-Family:ZF-HD
+Name:zf-HD
+Family:zf-HD
 Required:PF04770#1
 Auxiiary:NA
 Forbidden:NA
@@ -620,18 +620,18 @@ Desc:NA
 //
 
 ID:T0059
-Name:TIFY
-Family:TIFY
+Name:Tify
+Family:Tify
 Required:PF06200#1
 Auxiiary:NA
-Forbidden:PF003200#1
+Forbidden:PF00320#1
 Type:TF
 Desc:NA
 //
 
 ID:T0060
-Name:TUBBY
-Family:TUBBY
+Name:TUB
+Family:TUB
 Required:PF01167#1
 Auxiiary:NA
 Forbidden:NA
@@ -683,8 +683,7 @@ Desc:NA
 ID:T0065
 Name:DBP
 Family:DBP
-Required:DBP#1
-# kentnf
+Required:DNC#1--PF00481#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -743,8 +742,8 @@ Desc:NA
 //
 
 ID:T0072
-Name:sigma70-like
-Family:sigma70-like
+Name:Sigma70-like
+Family:Sigma70-like
 Required:PF04542#1--PF04539#1--PF04545#1
 Auxiiary:NA
 Forbidden:NA
@@ -1028,7 +1027,7 @@ Desc:NA
 ID:T9999
 Name:Orphans
 Family:Orphans
-Requried:PF06203#1;PF00643#1;PF00072#1;PF00412#1;PF02671#1;PF03925#1;PF09133#1;PF09425#1
+Required:PF06203#1;PF00643#1;PF00072#1;PF00412#1;PF02671#1;PF03925#1;PF09133#1;PF09425#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF

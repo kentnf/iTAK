@@ -50,28 +50,50 @@ sub itak_compare
 	my ($options, $files) = @_;
 
 	my $usage = qq'
-USAGE: $0 -t compar -f family_name ath_tf_classification.txt 
+USAGE: $0 -t compare -f family_name ath_tf_classification.txt 
 
 * please use ath_pep to perform identification
 * the PlnTFDB and PlantTFDB is locate in database folder
 
 ';
 	print $usage and exit unless $$files[0];
-	die "[ERR]file not exist\n" unless -s $$files[0];
-	my $input = $$files[0];
+	die "[ERR]fdr not exist\n" unless -s $$files[0];
+	my $fdr = $$files[0];
 	
 	my $dbs_dir = ${FindBin::RealBin}."/database";
 	my $pln	    = "$dbs_dir/PlnTFDB_Ath.txt";
-	my $plant   = "$dbs_dir/PlatTFDB_Ath.txt";
+	my $plant   = "$dbs_dir/PlantTFDB_Ath.txt";
+	my $input   = "$fdr/tf_classification.txt";
+	my $align   = "$fdr/tf_alignment.txt";
 
+	# load family information to hash
 	my $family;
 	$family = $$options{'f'} if defined $$options{'f'};
 
 	my %uid;
-	my %plnTFDB     = load_family($ARGV[0], 2, 3);
-	my %plantTFDB   = load_family($ARGV[1], 2, 3);
-	my %iTAK        = load_family($ARGV[2], 1, 2);
+	my %plnTFDB     = load_family($pln, 2, 3);
+	my %plantTFDB   = load_family($plant, 2, 3);
+	my %iTAK        = load_family($input, 1, 2);
 
+	# load alignment informat to hash
+	my %iTAK_align;
+	my $fha = IO::File->new($align) || die $!;
+	while(<$fha>)
+	{
+		chomp;
+		my @a = split(/\t/, $_);
+		my ($pfam_id, $pfam_name, $score) = ($a[1], $a[9], $a[11]);
+		my $combine_info = "$pfam_id;$pfam_name;$score";
+
+		if (defined $iTAK_align{$a[0]}) {
+			$iTAK_align{$a[0]}.="\t".$combine_info;
+		} else {
+			$iTAK_align{$a[0]} = $combine_info;
+		}	
+	}
+	$fha->close;
+
+	# making comparison
 	foreach my $ida (sort keys %plnTFDB)	{ $uid{$ida} = 1; }
 	foreach my $ida (sort keys %plantTFDB)	{ $uid{$ida} = 1; }
 	foreach my $ida (sort keys %iTAK)	{ $uid{$ida} = 1; }
@@ -99,39 +121,40 @@ USAGE: $0 -t compar -f family_name ath_tf_classification.txt
         	defined $plnTFDB{$id} and $ta = $plnTFDB{$id} or $ta = "NA";
 	        defined $plantTFDB{$id} and $tb = $plantTFDB{$id} or $tb = 'NA';
 	        defined $iTAK{$id} and $tc = $iTAK{$id} or $tc = 'NA';
-	        $ta = $tas{$ta} if defined $tas{$ta};
-	        $tb = $tbs{$tb} if defined $tbs{$tb};
-	        next if ($ta eq $tb && $tb eq $tc);
-	        next if (defined $tr{$ta} && $ta eq $tc && $tb eq 'NA');
+	        #$ta = $tas{$ta} if defined $tas{$ta};
+	        #$tb = $tbs{$tb} if defined $tbs{$tb};
+	        #next if ($ta eq $tb && $tb eq $tc);
+	        #next if (defined $tr{$ta} && $ta eq $tc && $tb eq 'NA');
 
-	        if ($ta eq 'MADS' && ($tb eq 'M-type' || $tb eq 'MIKC')) {
-	                next if $tb eq $tc;
-	        }
+	        #if ($ta eq 'MADS' && ($tb eq 'M-type' || $tb eq 'MIKC')) {
+	        #        next if $tb eq $tc;
+	        #}
 
-	        if ($ta eq 'AP2-EREBP' && ($tb eq 'AP2' || $tb eq 'ERF' || $tb eq 'RAV')) {
-	                next if $tb eq $tc;
-	        }
+	        #if ($ta eq 'AP2-EREBP' && ($tb eq 'AP2' || $tb eq 'ERF' || $tb eq 'RAV')) {
+	        #        next if $tb eq $tc;
+	        #}
 
-	        if ($ta eq 'ABI3VP1' && ($tb eq 'B3' || $tb eq 'ARF')) {
-	                next if $tb eq $tc;
-	        }
+	        #if ($ta eq 'ABI3VP1' && ($tb eq 'B3' || $tb eq 'ARF')) {
+	        #        next if $tb eq $tc;
+	        #}
 
-	        if ($ta eq 'CCAAT' && ($tb eq 'NF-YA' || $tb eq 'NF-YB' || $tb eq 'NF-YC')) {
-        	        next if $tb eq $tc;
-	        }
+	        #if ($ta eq 'CCAAT' && ($tb eq 'NF-YA' || $tb eq 'NF-YB' || $tb eq 'NF-YC')) {
+        	#        next if $tb eq $tc;
+	        #}
 
-	        if ($ta eq 'NA' &&  $tb eq 'NF-X1' && $tc eq 'NF-X1') { next; }
+	        #if ($ta eq 'NA' &&  $tb eq 'NF-X1' && $tc eq 'NF-X1') { next; }
 
-	        if ($ta eq 'NA' &&  $tb eq 'C2C2-LSD' && $tc eq 'C2C2-LSD') { next; }
+	        #if ($ta eq 'NA' &&  $tb eq 'C2C2-LSD' && $tc eq 'C2C2-LSD') { next; }
 
-	        if ($ta eq "HB") { next; }
+	        #if ($ta eq "HB") { next; }
+
+		my $alignment = 'No align';
+		$alignment = $iTAK_align{$id} if defined $iTAK_align{$id};
 
 		if ($family) {
-			if ( $family eq $ta || $family eq $tb || $family eq $tc) {
-				print "$id\t$ta\t$tb\t$tc\n";
-			}
+			if ( $family eq $ta || $family eq $tb || $family eq $tc) { print "$id\t$ta\t$tb\t$tc\t$alignment\n"; }
 		} else {
-			print "$id\t$ta\t$tb\t$tc\n";
+			print "$id\t$ta\t$tb\t$tc\t$alignment\n";
 		}
 	}
 }
@@ -141,7 +164,7 @@ sub load_family
 {
 	my ($file, $gene_col, $family_col) = @_;
 	my %gene_family;
-	my $fh = IO::File->new($file) || die $!;
+	my $fh = IO::File->new($file) || die "$file $!";
 	while(<$fh>)
 	{
 		chomp;

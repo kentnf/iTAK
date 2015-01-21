@@ -296,7 +296,7 @@ Desc:NA
 ID:T0027
 Name:GRF
 Family:GRF
-Required:PF08897#1--PF08880#1
+Required:PF08879#1--PF08880#1
 # PlantTFDB do not have QLQ(PF08880) domain 
 Auxiiary:NA
 Forbidden:NA
@@ -721,15 +721,16 @@ Type:TR
 Desc:NA
 //
 
-# ID:T0070
-# Name:OFP
-# Family:OFP
-# Required:kentnf
-# Auxiiary:NA
-# Forbidden:NA
-# Type:TF
-# Desc:NA
-# //
+ID:T0070
+Name:OFP
+Family:OFP
+Required:PF04844#1
+# DUF623 has been rename to Ovate 
+Auxiiary:NA
+Forbidden:NA
+Type:TF
+Desc:NA
+//
 
 ID:T0071
 Name:PLATZ

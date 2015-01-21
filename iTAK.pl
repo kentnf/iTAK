@@ -743,8 +743,8 @@ sub load_ga_cutoff
 		if ($_ =~ m/^ACC\s+(\S+)/) {
 			$pfam_id = $1;
 			$pfam_id =~ s/\..*//;
-		} elsif ($_ =~ m/^GA\s+(\S+)/) {
-			$ga_score = $1;
+		} elsif ($_ =~ m/^GA\s+(\S+)\s+(\S+)/) {	# using score for domain : The order of the thresholds is sequence, domain
+			$ga_score = $2;
 		} elsif ($_ eq "//") {
 			warn "[WARN]no pfam id\n" unless $pfam_id;
 			warn "[WARN]no ga score $pfam_id\n" unless $ga_score;

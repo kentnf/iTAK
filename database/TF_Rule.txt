@@ -286,7 +286,7 @@ Desc:NA
 ID:T0026
 Name:GRAS
 Family:GRAS
-Required:PF03514#1 
+Required:PF03514#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -304,52 +304,55 @@ Type:TF
 Desc:NA
 //
 
-ID:T0028
-Name:HD-ZIP
-Family:HB->HD-ZIP
-Required:PF00046#1--PF01852#1:HD-ZIP#1
+# ID:T0028
+# Name:HD-ZIP
+# Family:HB->HD-ZIP
+# Required:PF00046#1--PF01852#1:HD-ZIP#1
 # PlantTFDB do not provide HD-ZIP domain
-Auxiiary:NA
-Forbidden:NA
-Type:TF
-Desc:NA
-//
+# Auxiiary:NA
+# Forbidden:NA
+# Type:TF
+# Desc:NA
+# //
 
-ID:T0029
-Name:TALE
-Family:HB->TALE
-Required:PF00046#1--PF03798#1:BELL#1
+# ID:T0029
+# Name:TALE
+# Family:HB->TALE
+# Required:PF00046#1--PF03798#1:BELL#1
 # PlantTFDB do not provide Bell domain
-Auxiiary:NA
-Forbidden:NA
-Type:TF
-Desc:NA
-//
+# Auxiiary:NA
+# Forbidden:NA
+# Type:TF
+# Desc:NA
+# //
 
-ID:T0030
-Name:WOX
-Family:HB->WOX
-Required:PF00046#1--WusType#1
+# ID:T0030
+# Name:WOX
+# Family:HB->WOX
+# Required:PF00046#1--WusType#1
 # PlantTFDB do not provide WusType domain
-Auxiiary:NA
-Forbidden:NA
-Type:TF
-Desc:NA
-//
+# Auxiiary:NA
+# Forbidden:NA
+# Type:TF
+# Desc:NA
+# //
 
-ID:T0031
-Name:HB-PHD
-Family:HB->HB-PHD
-Required:PF00046#1--PF00628#1
-Auxiiary:NA
-Forbidden:NA
-Type:TF
-Desc:NA
-//
+# ID:T0031
+# Name:HB-PHD
+# Family:HB->HB-PHD
+# Required:PF00046#1--PF00628#1
+# Auxiiary:NA
+# Forbidden:NA
+# Type:TF
+# Desc:NA
+# //
 
 ID:T0032
-Name:HB-other
-Family:HB->HB-other
+# Name:HB-other
+# Family:HB->HB-other
+# Using HB family first before generate hmm profile of HB subfamily
+Name:HB
+Family:HB
 Required:PF00046#1
 Auxiiary:NA
 Forbidden:NA

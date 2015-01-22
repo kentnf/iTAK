@@ -32,10 +32,10 @@ my $debug = 0;
 
 my %options;
 getopts('a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:u:v:w:x:y:z:h', \%options);
-unless (defined $options{'t'} ) { usage($version); }
+
+unless (defined $options{'t'} ) { $options{'t'} = 'identify'; }	 # set default tool
 
 if	($options{'t'} eq 'identify')	{ itak_identify(\%options, \@ARGV); }
-elsif	($options{'t'} eq 'database')	{ itak_database(\%options, \@ARGV); }
 elsif	($options{'t'} eq 'compare')	{ itak_compare(\%options, \@ARGV); }
 else	{ usage($version); }
 
@@ -206,6 +206,7 @@ USAGE:  perl $0 [options] input_seq
 	my $cpu = '20';
 	$cpu = $$options{'p'} if (defined $$options{'p'} && $$options{'p'} > 0); 
 
+	# The quick mode used for iTAK program, and normal mode for iTAK database
 	my $mode = 'quick';
 	$mode = 'normal' if (defined $$options{'m'} && $$options{'m'} eq 'normal');
 
@@ -220,9 +221,8 @@ USAGE:  perl $0 [options] input_seq
 	my $sfam_db	= $dbs_dir."/TF_selfbuild.hmm";		# self-build 
 	my $plantsp_db = $dbs_dir."/PlantsPHMM3_89.hmm";	# plantsP kinase
 	my $shiu_db    = $dbs_dir."/Plant_Pkinase_fam.hmm";	# shiu kinase database
-	foreach my $db (($tfam_db, $pfam_db, $sfam_db, $plantsp_db, $shiu_db)) {
-		die "[ERR]database file $db\n" unless (-s $db.".h3f" && -s $db.".h3i" && -s $db.".h3m" && -s $db.".h3p");
-	}
+	my $Psub_wnk1    = $dbs_dir."/Pkinase_sub_WNK1.hmm";    # wnk1 hmm
+        my $Psub_MAK     = $dbs_dir."/Pkinase_sub_MAK.hmm";     # MAK hmm
 
 	my $tf_rule = $dbs_dir."/TF_Rule.txt";              	# Rules for Transcription Factors
 	my $correct_ga = $dbs_dir."/GA_table.txt";		# update GA cutoff
@@ -232,6 +232,36 @@ USAGE:  perl $0 [options] input_seq
 
 	foreach my $f (($tf_rule, $correct_ga, $pk_desc, $hmmscan_bin, $hmmpress_bin)) {
 		die "[ERR]file not exist: $f\n" unless -s $f;
+	}
+
+	foreach my $db (($tfam_db, $plantsp_db, $shiu_db, $Psub_wnk1, $Psub_MAK)) {
+                unless (-s $db.".h3f" && -s $db.".h3i" && -s $db.".h3m" && -s $db.".h3p") {
+                        warn "[WARN]no database file $db\n";
+                        run_cmd("$hmmpress_bin -f $db");
+                }
+        }
+
+	# +++++ prepare files for norm mode +++++
+	# the normal mode only used for iTAK database
+	if ($mode eq 'normal') {
+
+		my $norm_db_cmd = "# please download and prepare Pfam database using below command:\n".
+			"wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-A.hmm.gz\n".
+			"gunzip  Pfam-A.hmm.gz\n".
+			"mv Pfam-A.hmm database\n".
+			"$hmmpress_bin database/Pfam-A.hm\n\n".
+			"# please prepare hmm database for self-build domain\n".
+			"$hmmpress_bin $sfam_db\n\n";
+
+		print $norm_db_cmd and exit unless -s $pfam_db;
+		die "[ERR]no self-build file $sfam_db\n" unless -s $sfam_db;
+
+		foreach my $db (($pfam_db, $sfam_db)) {
+			unless (-s $db.".h3f" && -s $db.".h3i" && -s $db.".h3m" && -s $db.".h3p") {
+				warn "[WARN]no database file $db\n";
+				run_cmd("$hmmpress_bin -f $db");
+			}
+		}
 	}
 
 	my %tf_rule = load_rule($tf_rule);
@@ -466,59 +496,6 @@ USAGE:  perl $0 [options] input_seq
 			run_cmd("rm -rf $temp_dir") if -s $temp_dir;
 		}
 	}
-}
-
-=head2
- itak_database -- prepare itak database
-=cut
-sub itak_database
-{
-	my ($options, $files) = @_;
-
-        my $usage =qq'
-USAGE:  perl $0 -t database  
-
-';
-	my $mode = 'quick';
-        $mode = 'normal' if (defined $$options{'m'} && $$options{'m'} eq 'normal');
-	
-	# check file exist
-	my $bin_dir = ${FindBin::RealBin}."/bin";
-	my $dbs_dir = ${FindBin::RealBin}."/database";
-	unless (-e $bin_dir) { die "[ERR]bin folder not exist.\n$bin_dir\n"; }
-	unless (-e $dbs_dir) { die "[ERR]database folder not exist.\n $dbs_dir\n"; }
-
-	my $TF_selfbuild = $dbs_dir."/TF_selfbuild.hmm";	# selfbuild hmm
-	my $plantsp_db	 = $dbs_dir."/PlantsPHMM3_89.hmm";	# plantsP kinase
-	my $shiu_db	 = $dbs_dir."/Plant_Pkinase_fam.hmm";	# shiu kinase database
-	my $Psub_wnk1	 = $dbs_dir."/Pkinase_sub_WNK1.hmm";	# wnk1 hmm
-	my $Psub_MAK 	 = $dbs_dir."/Pkinase_sub_MAK.hmm";	# MAK hmm
-	my $Pfam_A     	 = $dbs_dir."/Pfam-A.hmm";     		# Pfam A hmm
-	my $Tfam	 = $dbs_dir."/Tfam_domain.hmm";		# for TF identification
-	my $hmmpress_bin = $bin_dir."/hmmpress";		# hmmspress
-
-	die "[ERR]no hmmpress\n" unless -s $hmmpress_bin;
-	foreach my $f (($plantsp_db,$shiu_db,$Psub_wnk1,$Psub_MAK,$Tfam)) {
-		die "[ERR]file not exist: $f\n" unless -s $f;
-		run_cmd("$hmmpress_bin -f $f");
-	}
-
-	# for iTAK database
-	if ($mode eq 'normal') {
-		print qq'
-# please download and prepare Pfam database using below command:
-wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-A.hmm.gz 
-gunzip  Pfam-A.hmm.gz
-mv Pfam-A.hmm database
-$hmmpress_bin database/Pfam-A.hmm
-
-# please prepare hmm database for self-build domain
-$hmmpress_bin $TF_selfbuild
-
-';
-	}
-	
-	exit;
 }
 
 #################################################################

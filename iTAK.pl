@@ -252,25 +252,27 @@ USAGE:  perl $0 [options] input_seq
 
 		my $input_protein_f = $temp_dir."/protein_seq.fa";			# input protein sequence
 		my $tmp_pfam_hmmscan = $temp_dir."/protein_seq.pfam.hmmscan.txt";	# temp hmmscan result compared to Pfam-A + customized
-		my $report_info = '';
+		my $report_info = '#' x 80;
 
 		# put seq to hash
 		# key: id, alphabet, seq; value: alphabet, seq
 		# proteins to temp file
 		my %seq_info = seq_to_hash($f);
-		$report_info = "Load ".scalar(keys(%seq_info))." sequences.\n\nNot protein sequence ID:\n";
+		$report_info.= "\nLoad ".scalar(keys(%seq_info))." sequences from $f\n";
 
+		my $nt_id = '';
 		my $outp = IO::File->new(">".$input_protein_f) || die $!;
 		foreach my $id (sort keys %seq_info) {
 
 			if ($seq_info{$id}{'alphabet'} eq 'protein') {
 				print $outp ">".$id."\n".$seq_info{$id}{'seq'}."\n";
 			} else {
-				$report_info.= "$id\n";
+				$nt_id.= "\t$id\n";
 			}
 		}
 		$outp->close;
-		print "[ERR]no input proteins\n" unless -s $input_protein_f;
+		warn "[WARN]no input proteins\n" unless -s $input_protein_f;
+		if ($nt_id) { $report_info.= "\nBelow sequence may not protein:\n$nt_id\n"; }	
 
 		# ==== Part A TF identification ====
 		# ==== A1. compare input seq with database ====
@@ -295,6 +297,7 @@ USAGE:  perl $0 [options] input_seq
 
 		# ==== A2. TF identification ====
 		my %qid_tid = itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%ga_cutoff, \%tf_rule);
+		$report_info.= "  ".scalar(keys(%qid_tid))." of proteins were identified as transcription factors or transcriptional regulators\n";
 
 		# ==== A3. save the result ====
 		my $output_sequence	  = "$output_dir/tf_sequence.txt";
@@ -389,16 +392,6 @@ USAGE:  perl $0 [options] input_seq
 			}
                 }
 
-                # %pkinases_cat = get_wnk1(\%pkinases_cat, "$dbs_dir/wnk1_hmm_domain/WNK1_hmm" , "30" ,"PPC:4.1.5", "PPC:4.1.5.1");""
-                # $$pkid_des{"PPC:4.1.5.1"} = "WNK like kinase - with no lysine kinase";
-                # %pkinases_cat = get_wnk1(\%pkinases_cat, "$dbs_dir/mak_hmm_domain/MAK_hmm" , "460.15" ,"PPC:4.5.1", "PPC:4.5.1.1");
-                # $$pkid_des{"PPC:4.5.1.1"} = "Male grem cell-associated kinase (mak)";
-        
-		#foreach my $pid (sort keys %pkinases_cat) {
-                #        print $ca_fh1 $pid."\t".$pkinases_cat{$pid}."\t".$$pkid_des{$pkinases_cat{$pid}}."\n";
-                #}
-                #$ca_fh1->close;
-
 		# ==== B5 save result =====
 		# output plantsp classification
 		my $ppc_cat = $output_dir."/PPC_classification.txt";
@@ -406,7 +399,9 @@ USAGE:  perl $0 [options] input_seq
 
                 my $ca_fh1 = IO::File->new(">".$ppc_cat) || die $!;
                 my $al_fh1 = IO::File->new(">".$ppc_aln) || die $!;
-		foreach my $pid (sort keys %$plantsp_cat) { print $ca_fh1 $pid."\t".$$plantsp_cat{$pid}."\t".$$pkid_des{$$plantsp_cat{$pid}}."\n"; }
+		foreach my $pid (sort keys %$plantsp_cat) { 
+			print $ca_fh1 $pid."\t".$$plantsp_cat{$pid}."\t".$$pkid_des{$$plantsp_cat{$pid}}."\n"; 
+		}
 
                 foreach my $pid (sort keys %$plantsp_cat) {
                         if (defined $align_pfam_hash{$pid} && defined $$plantsp_cat{$pid} ) {
@@ -462,9 +457,15 @@ USAGE:  perl $0 [options] input_seq
 		}
 		$out_pks->close;
 
+		$report_info.= "  ".scalar(keys(%pkinase_id))." of proteins were identified as protein kinase\n";
+		$report_info.= "Finished\n";
+		$report_info.= "#" x 80;
 		print $report_info."\n";
+
 		# remove temp folder
-		# run_cmd("rm -rf $temp_dir") if -s $temp_dir;
+		unless ($debug) {
+			run_cmd("rm -rf $temp_dir") if -s $temp_dir;
+		}
 	}
 }
 
@@ -910,7 +911,7 @@ sub compare_rule
 			$r_status = 1 if $match_status == 2;
 			if ($match_status == 2) {
 
-				print "$rid\t$domain_num\t$match_score\n";
+				#print "$rid\t$domain_num\t$match_score\n";
 
 				if ($domain_num > $total_domain && $match_score > $total_score) {
 					$total_domain = $domain_num;

@@ -61,6 +61,7 @@ PPC:4.1.2	STE20-PAK Like Protein Kinase
 PPC:4.1.3	MAP2K
 PPC:4.1.4	MAP2K
 PPC:4.1.5	Possible MAP2K
+PPC:4.1.5.1	WNK like kinase - with no lysine kinase
 PPC:4.1.6	Unknown Function Kinase
 PPC:4.1.7	APG1 Like Kinase
 PPC:4.2.1	Calcium Dependent Protein Kinase
@@ -77,6 +78,7 @@ PPC:4.4.2	Unknown Function Kinase
 PPC:4.4.3	Unknown Function Kinase
 PPC:4.4.4	Unknown Function Kinase
 PPC:4.5.1	MAPK Family
+PPC:4.5.1.1	Male grem cell-associated kinase (mak)
 PPC:4.5.2	CDC2 Like Kinase Family
 PPC:4.5.3	Casein Kinase II Family
 PPC:4.5.4	GSK3/Shaggy Like Protein Kinase Family

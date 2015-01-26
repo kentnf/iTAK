@@ -6,7 +6,7 @@
  yz357@cornell.edu
 
  update
-	[Dec-31-2014][v1.5]: combination rules for plantTFDB and plnTFDB, new classification system for future rule update
+	[Jan-26-2015][v1.5]: combination rules for plantTFDB and plnTFDB, new classification system for future rule update
 	[Jan-19-2014][v1.4]: new category system for plant protein kinase, from RKD and HMM build by Shiu et al. 2012 
 		     update the hmmscan to version 3.1, 2x faster than hmm 3.0
 	[Jun-22-2013][v1.3]: update some small bugs, Pfam V27, WAK and WAKL family, a switch for transponsase filter
@@ -187,6 +187,7 @@ sub itak_identify
 	my $usage =qq'
 USAGE:  perl $0 [options] input_seq 
 
+	-f  [String]	translate frame. (3F, 3R, 6; default = 6)
         -a  [Integer]   number of CPUs used for hmmscan. (default = 1)
         -o  [String]    Name of the output directory. ( default = \'input file
                         name\' + \'_output\')
@@ -205,6 +206,21 @@ USAGE:  perl $0 [options] input_seq
 	
 	my $cpu = '20';
 	$cpu = $$options{'p'} if (defined $$options{'p'} && $$options{'p'} > 0); 
+
+	# frame for translate
+	my $frame = 6;	# default is 6
+	$frame = $$options{'f'} if ( defined $$options{'f'} && ($$options{'f'} eq '3F' || $$options{'f'} eq '3R'));
+
+	my %frame;
+	if ( $frame eq '6' ) {
+		%frame = qw/-0F 1 -1F 1 -2F 1 -0R 1 -1R 1 -2R 1/;
+	} elsif ( $frame eq '3F' ) {
+		%frame = qw/-0F 1 -1F 1 -2F 1/;
+	} elsif ( $frame eq '3R' ) {
+		%frame = qw/-0R 1 -1R 1 -2R 1/;
+	}
+
+	# foreach my $f (sort keys %frame) { print $f."\t".$frame{$f}."\n"; }
 
 	# The quick mode used for iTAK program, and normal mode for iTAK database
 	my $mode = 'quick';
@@ -238,7 +254,7 @@ USAGE:  perl $0 [options] input_seq
                 unless (-s $db.".h3f" && -s $db.".h3i" && -s $db.".h3m" && -s $db.".h3p") {
                         warn "[WARN]no database file $db\n";
                         run_cmd("$hmmpress_bin -f $db");
-                }
+		}
         }
 
 	# +++++ prepare files for norm mode +++++
@@ -289,19 +305,27 @@ USAGE:  perl $0 [options] input_seq
 		my %seq_info = seq_to_hash($f);
 		$report_info.= "\nLoad ".scalar(keys(%seq_info))." sequences from $f\n";
 
-		my $nt_id = '';
+		my ($protein_num, $nuleotide_num) = (0, 0);
 		my $outp = IO::File->new(">".$input_protein_f) || die $!;
 		foreach my $id (sort keys %seq_info) {
 
 			if ($seq_info{$id}{'alphabet'} eq 'protein') {
+				$protein_num++;
 				print $outp ">".$id."\n".$seq_info{$id}{'seq'}."\n";
 			} else {
-				$nt_id.= "\t$id\n";
+				$nuleotide_num++;
+				# translate to proteins
+				my $seqobj = Bio::Seq->new(-seq=>$seq_info{$id}{'seq'}, -id=>$id);
+				my @prots = Bio::SeqUtils->translate_6frames($seqobj);				
+				for (my $i = 0; $i < @prots; $i++) {
+					my $nid = substr($prots[$i]->id, -3);
+					print $outp ">".$prots[$i]->id."\n".$prots[$i]->seq."\n" if defined $frame{$nid};
+					$seq_info{$prots[$i]->id}{'seq'} = $prots[$i]->seq;
+				}	
 			}
 		}
 		$outp->close;
-		warn "[WARN]no input proteins\n" unless -s $input_protein_f;
-		if ($nt_id) { $report_info.= "\nBelow sequence may not protein:\n$nt_id\n"; }	
+		$report_info.= "  $protein_num of input sequences are protein\n  $nuleotide_num of input sequneces are nucleotide\n";
 
 		# ==== Part A TF identification ====
 		# ==== A1. compare input seq with database ====

@@ -21,7 +21,7 @@ use Cwd;
 use IO::File;
 use Getopt::Std;
 use Bio::SeqIO;
-use Mail::Sendmail;
+#use Mail::Sendmail;
 use FindBin;
 use lib "$FindBin::RealBin/bin";
 use itak;
@@ -1141,13 +1141,13 @@ sub send_mail
 	my $job_id = $input_file; $job_id =~ s/.*\///ig;
 	my $download_link = "http://bioinfo.bti.cornell.edu/cgi-bin/itak/online_itak.cgi?rid=$job_id"; 
 	my %mail = ( To => $address,
-           	     From => 'eggrubys@gmail.com',
+           	     From => 'bioinfo@cornell.edu',
 		     Subject => "[iTAK] analysis for $job_id is finished",
             	     Message => "Hi,\n the analysis for $job_id is finished. Please view and download your result through link $download_link\nThank you for using iTAK.\n"
            );
 
-  	sendmail(%mail) or die $Mail::Sendmail::error;
-	print "OK. Log says:\n", $Mail::Sendmail::log, "\n\n";
+  	#sendmail(%mail) or die $Mail::Sendmail::error;
+	#print "OK. Log says:\n", $Mail::Sendmail::log, "\n\n";
 }
 
 =head2

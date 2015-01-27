@@ -7,9 +7,9 @@
 
  update
 	[Jan-26-2015][v1.5]: combination rules for plantTFDB and plnTFDB, new classification system for future rule update
-	[Jan-19-2014][v1.4]: new category system for plant protein kinase, from RKD and HMM build by Shiu et al. 2012 
+	[Jan-19-2014][v1.4]: new category system for plant protein kinase, build by Shiu et al. 2012 
 		     update the hmmscan to version 3.1, 2x faster than hmm 3.0
-	[Jun-22-2013][v1.3]: update some small bugs, Pfam V27, WAK and WAKL family, a switch for transponsase filter
+	[Jun-22-2013][v1.3]: update some small bugs, Pfam v27
 	[Aug-26-2011][v1.2]: report unusual sequences
 	[Jun-03-2011][v1.1]: remove unsignificiant domain using GA score
 	[Dec-14-2010][v1.0]: first stable version 
@@ -353,7 +353,7 @@ USAGE:  perl $0 [options] input_seq
 		$report_info.= "  ".scalar(keys(%qid_tid))." of proteins were identified as transcription factors or transcriptional regulators\n";
 
 		# ==== A3. save the result ====
-		my $output_sequence	  = "$output_dir/tf_sequence.txt";
+		my $output_sequence	  = "$output_dir/tf_sequence.fasta";
 		my $output_alignment	  = "$output_dir/tf_alignment.txt";
 		my $output_classification = "$output_dir/tf_classification.txt";
 		itak_tf_write_out(\%qid_tid, \%seq_info, $hmmscan_detail_1, \%tf_rule, $output_sequence, $output_alignment, $output_classification);
@@ -500,7 +500,7 @@ USAGE:  perl $0 [options] input_seq
                 $al_fh2->close;	
 
 		# output pkinase sequences
-		my $pkinase_seq = $output_dir."/pk_sequence.txt";
+		my $pkinase_seq = $output_dir."/pk_sequence.fasta";
 		my $out_pks = IO::File->new(">".$pkinase_seq) || die $!;
 		foreach my $pid (sort keys %pkinase_id) {
 			my $cat1 = 'NA'; my $cat2 = 'NA';

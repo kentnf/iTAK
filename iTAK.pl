@@ -18,11 +18,10 @@
 use strict;
 use warnings;
 use Cwd;
-use File::Basename;
-use Bio::SeqIO;
 use IO::File;
-use Bio::SearchIO;
 use Getopt::Std;
+use Bio::SeqIO;
+use Mail::Sendmail;
 use FindBin;
 use lib "$FindBin::RealBin/bin";
 use itak;
@@ -220,7 +219,9 @@ USAGE:  perl $0 [options] input_seq
 		%frame = qw/-0R 1 -1R 1 -2R 1/;
 	}
 
-	# foreach my $f (sort keys %frame) { print $f."\t".$frame{$f}."\n"; }
+	# hidden parameters for online version of iTAK
+	# $$options{'z'} for zip output filder download
+	# $$options{'s'} for send mail to user when finished
 
 	# The quick mode used for iTAK program, and normal mode for iTAK database
 	my $mode = 'quick';
@@ -519,6 +520,10 @@ USAGE:  perl $0 [options] input_seq
 		unless ($debug) {
 			run_cmd("rm -rf $temp_dir") if -s $temp_dir;
 		}
+
+		# for online version
+		if (defined $$options{'z'}) { run_cmd("tar -czvf $output_dir.tgz $output_dir"); }
+		if (defined $$options{'s'}) { send_mail($$options{'s'}, $f); }
 	}
 }
 
@@ -1125,6 +1130,24 @@ sub seq_to_hash
 		$seq_info{$inseq->id}{'seq'} = $inseq->seq;
 	}
 	return %seq_info	
+}
+
+=head2
+
+=cut
+sub send_mail
+{
+	my ($address, $input_file) = @_;
+	my $job_id = $input_file; $job_id =~ s/.*\///ig;
+	my $download_link = "http://bioinfo.bti.cornell.edu/cgi-bin/itak/online_itak.cgi?rid=$job_id"; 
+	my %mail = ( To => $address,
+           	     From => 'eggrubys@gmail.com',
+		     Subject => "[iTAK] analysis for $job_id is finished",
+            	     Message => "Hi,\n the analysis for $job_id is finished. Please view and download your result through link $download_link\nThank you for using iTAK.\n"
+           );
+
+  	sendmail(%mail) or die $Mail::Sendmail::error;
+	print "OK. Log says:\n", $Mail::Sendmail::log, "\n\n";
 }
 
 =head2

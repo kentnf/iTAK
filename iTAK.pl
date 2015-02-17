@@ -401,8 +401,8 @@ USAGE:  perl $0 [options] input_seq
 		my ($shiu_hit, $shiu_detail)       = itak::parse_hmmscan_result($tmp_shiu_hmmscan);
 
 		# ==== B3. PK classification ====		
-		my ($plantsp_cat, $plantsp_aln) = itak_pk_classify($plantsp_detail);
-                my ($shiu_cat, $shiu_aln) = itak_pk_classify($shiu_detail);
+		my ($plantsp_cat, $plantsp_aln) = itak_pk_classify($plantsp_detail, \%pkinase_id, "PPC:5.2.1");
+                my ($shiu_cat, $shiu_aln) = itak_pk_classify($shiu_detail, \%pkinase_id, "Group-other");
 
                 # ==== B4 classification of sub pkinase ====
 		my @wnk1 = ("$dbs_dir/Pkinase_sub_WNK1.hmm",   "30" , "PPC:4.1.5", "PPC:4.1.5.1");
@@ -429,11 +429,12 @@ USAGE:  perl $0 [options] input_seq
 
 			# next if there is no seq
 			next if $seq_num == 0;
+			print $seq_num."\t$cat\n";
 
 			# hmmscan and parse hmm result
         		my $ppc_hmm_result = $temp_dir."/temp_ppc_sub_hmmscan.txt";
         		my $hmm_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $ppc_hmm_result $hmm_profile $ppc_seq";
-			run_cmd($hmm_cmd) unless -s $ppc_hmm_result;
+			run_cmd($hmm_cmd);
         		my ($ppc_hits, $ppc_detail) = itak::parse_hmmscan_result($ppc_hmm_result);
 			my @hit = split(/\n/, $ppc_detail);
 
@@ -1042,7 +1043,10 @@ sub itak_tf_write_out
 =cut
 sub itak_pk_classify
 {
-        my $hmmscan_detail = shift;
+        my ($hmmscan_detail, $pkinase_id, $other) = @_;
+
+	my %pk_id = %$pkinase_id;
+
 	chomp($hmmscan_detail);
 	my @hit_line = split(/\n/, $hmmscan_detail);
 
@@ -1066,9 +1070,16 @@ sub itak_pk_classify
 			$hit{$a[0]} = $a[1];
 			$score{$a[0]} = $a[9];
 			$best_hit_align{$a[0]} = $line."\n";
-			
+			delete $pk_id{$a[0]};
 		}
 	}
+
+	# classify unaligned pks to other
+	foreach my $pid (sort keys %pk_id) {
+		$hit{$pid} = $other;
+		$best_hit_align{$pid} = '';
+	}
+
         return (\%hit, \%best_hit_align);
 }
 

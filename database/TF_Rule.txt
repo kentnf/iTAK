@@ -745,15 +745,15 @@ Type:TF
 Desc:NA
 //
 
-ID:T0072
-Name:Sigma70-like
-Family:Sigma70-like
-Required:PF04542#1--PF04539#1--PF04545#1
-Auxiiary:NA
-Forbidden:NA
-Type:TF
-Desc:NA
-//
+#ID:T0072
+#Name:Sigma70-like
+#Family:Sigma70-like
+#Required:PF04542#1--PF04539#1--PF04545#1
+#Auxiiary:NA
+#Forbidden:NA
+#Type:TF
+#Desc:NA
+#//
 
 ID:T0073
 Name:TAZ
@@ -765,15 +765,15 @@ Type:TR
 Desc:NA
 //
 
-ID:T0074
-Name:TIG
-Family:TIG
-Required:PF01833#1
-Auxiiary:NA
-Forbidden:NA
-Type:TF
-Desc:NA
-//
+#ID:T0074
+#Name:TIG
+#Family:TIG
+#Required:PF01833#1
+#Auxiiary:NA
+#Forbidden:NA
+#Type:TF
+#Desc:NA
+#//
 
 ID:T0075
 Name:ULT
@@ -806,7 +806,6 @@ Desc:NA
 //
 
 # transcriptional regulators
-
 ID:T5001
 Name:ARID
 Family:ARID

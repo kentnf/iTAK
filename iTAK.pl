@@ -187,7 +187,7 @@ sub itak_identify
 USAGE:  perl $0 [options] input_seq 
 
 	-f  [String]	translate frame. (3F, 3R, 6; default = 6)
-        -a  [Integer]   number of CPUs used for hmmscan. (default = 1)
+        -p  [Integer]   number of CPUs used for hmmscan. (default = 1)
         -o  [String]    Name of the output directory. ( default = \'input file
                         name\' + \'_output\')
 

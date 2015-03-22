@@ -710,7 +710,7 @@ Family:LIM
 Required:PF00412#1
 Auxiiary:NA
 Forbidden:NA
-Type:TF
+Type:TR
 Desc:NA
 //
 

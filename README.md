@@ -2,9 +2,7 @@
 iTAK
 ================
 
-http://kentnf.github.io/tools/itak.html
-
-
+http://bioinfo.bti.cornell.edu/tool/itak
 
 
 

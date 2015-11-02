@@ -6,6 +6,7 @@
  yz357@cornell.edu
 
  update
+	[Nov-02-2015][v1.6]: update database to Pfam 28, change DUF822 to BES1_N according to Pfam 28
 	[Jan-26-2015][v1.5]: combination rules for plantTFDB and plnTFDB, new classification system for future rule update
 	[Jan-19-2014][v1.4]: new category system for plant protein kinase, build by Shiu et al. 2012 
 		     update the hmmscan to version 3.1, 2x faster than hmm 3.0
@@ -26,7 +27,7 @@ use FindBin;
 use lib "$FindBin::RealBin/bin";
 use itak;
 
-my $version = 1.5;
+my $version = 1.6;
 my $debug = 0;
 
 my %options;
@@ -34,7 +35,7 @@ getopts('a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:u:v:w:x:y:z:h', \%options);
 
 unless (defined $options{'t'} ) { $options{'t'} = 'identify'; }	 # set default tool
 
-if	($options{'t'} eq 'identify')	{ itak_identify(\%options, \@ARGV); }
+if		($options{'t'} eq 'identify')	{ itak_identify(\%options, \@ARGV); }
 elsif	($options{'t'} eq 'compare')	{ itak_compare(\%options, \@ARGV); }
 else	{ usage($version); }
 
@@ -252,16 +253,15 @@ USAGE:  perl $0 [options] input_seq
 	}
 
 	foreach my $db (($tfam_db, $plantsp_db, $shiu_db, $Psub_wnk1, $Psub_MAK)) {
-                unless (-s $db.".h3f" && -s $db.".h3i" && -s $db.".h3m" && -s $db.".h3p") {
-                        warn "[WARN]no database file $db\n";
-                        run_cmd("$hmmpress_bin -f $db");
+		unless (-s $db.".h3f" && -s $db.".h3i" && -s $db.".h3m" && -s $db.".h3p") {
+			warn "[WARN]no database file $db\n";
+			run_cmd("$hmmpress_bin -f $db");
 		}
-        }
+	}
 
 	# +++++ prepare files for norm mode +++++
 	# the normal mode only used for iTAK database
 	if ($mode eq 'normal') {
-
 		my $norm_db_cmd = "# please download and prepare Pfam database using below command:\n".
 			"wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam27.0/Pfam-A.hmm.gz\n".
 			"gunzip  Pfam-A.hmm.gz\n".
@@ -452,54 +452,52 @@ USAGE:  perl $0 [options] input_seq
 		my $ppc_cat = $output_dir."/PPC_classification.txt";
 		my $ppc_aln = $output_dir."/PPC_alignment.txt";
 
-                my $ca_fh1 = IO::File->new(">".$ppc_cat) || die $!;
-                my $al_fh1 = IO::File->new(">".$ppc_aln) || die $!;
+		my $ca_fh1 = IO::File->new(">".$ppc_cat) || die $!;
+		my $al_fh1 = IO::File->new(">".$ppc_aln) || die $!;
 		foreach my $pid (sort keys %$plantsp_cat) { 
 			print $ca_fh1 $pid."\t".$$plantsp_cat{$pid}."\t".$$pkid_des{$$plantsp_cat{$pid}}."\n"; 
 		}
-
-                foreach my $pid (sort keys %$plantsp_cat) {
-                        if (defined $align_pfam_hash{$pid} && defined $$plantsp_cat{$pid} ) {
+                
+		foreach my $pid (sort keys %$plantsp_cat) {
+			if (defined $align_pfam_hash{$pid} && defined $$plantsp_cat{$pid} ) {
 				print $al_fh1 $$plantsp_aln{$pid};
-                                print $al_fh1 $align_pfam_hash{$pid};
-                        } else {
-                                die "Error! Do not have alignments in hmm3 parsed result\n";
-                        }
-                        # delete $pkinase_id{$pid};
-                }
-
-                #foreach my $pid (sort keys %plantsp_cat) {
-                #        print $ca_fh1 $pid."\tPPC:1.Other\n";
-		#
+				print $al_fh1 $align_pfam_hash{$pid};
+			} else {
+				die "Error! Do not have alignments in hmm3 parsed result\n";
+			}
+			# delete $pkinase_id{$pid};
+		}
+        
+		#foreach my $pid (sort keys %plantsp_cat) {
+		#	print $ca_fh1 $pid."\tPPC:1.Other\n";
 		#	if (defined $pkinase_aln{$pid}) {
-                #                print $al_fh1 $pkinase_aln{$pid};
-                #        } else {
-                #                die "Error! Do not have alignments in hmm3 parsed result\n";
-                #        }
-                #}
+		#		print $al_fh1 $pkinase_aln{$pid};
+		#	} else {
+		#		die "Error! Do not have alignments in hmm3 parsed result\n";
+        #	}
+        #}
 
 		$ca_fh1->close;
-                $al_fh1->close;
+		$al_fh1->close;
 		
-                # output Shiu classification
+		# output Shiu classification
 		my $shiu_cat_file = $output_dir."/shiu_classification.txt";
-                my $shiu_aln_file = $output_dir."/shiu_alignment.txt";
+		my $shiu_aln_file = $output_dir."/shiu_alignment.txt";
 
-                my $ca_fh2 = IO::File->new(">".$shiu_cat_file) || die $!;
-                my $al_fh2 = IO::File->new(">".$shiu_aln_file) || die $!;
-                foreach my $pid (sort keys %$shiu_cat) { print $ca_fh2 $pid."\t".$$shiu_cat{$pid}."\n"; }
-		
+		my $ca_fh2 = IO::File->new(">".$shiu_cat_file) || die $!;
+		my $al_fh2 = IO::File->new(">".$shiu_aln_file) || die $!;
+		foreach my $pid (sort keys %$shiu_cat) { print $ca_fh2 $pid."\t".$$shiu_cat{$pid}."\n"; }
 		foreach my $pid (sort keys %$shiu_cat) { 
-                        if (defined $align_pfam_hash{$pid} && defined $$shiu_cat{$pid} ) {
-                                print $al_fh2 $$shiu_aln{$pid};
-                                print $al_fh2 $align_pfam_hash{$pid};
-                        } else {
-                                die "Error! Do not have alignments in hmm3 parsed result\n";
-                        }
+			if (defined $align_pfam_hash{$pid} && defined $$shiu_cat{$pid} ) {
+				print $al_fh2 $$shiu_aln{$pid};
+				print $al_fh2 $align_pfam_hash{$pid};
+			} else {
+				die "Error! Do not have alignments in hmm3 parsed result\n";
+			}
 		}
 
-                $ca_fh2->close;
-                $al_fh2->close;	
+		$ca_fh2->close;
+		$al_fh2->close;	
 
 		# output pkinase sequences
 		my $pkinase_seq = $output_dir."/pk_sequence.fasta";
@@ -1114,17 +1112,16 @@ sub aln_to_hash
 =cut
 sub pk_to_hash
 {
-        my $file = shift;
-        my %hash;
-        my $pfh = IO::File->new($file) || die "Can not open protein kinase description file: $file $!\n";
-        while(<$pfh>)
-        {
-                chomp;
-                my @pm = split(/\t/, $_, 2);
-                $hash{$pm[0]} = $pm[1];
-        }
-        $pfh->close;
-        return (\%hash);
+	my $file = shift;
+	my %hash;
+	my $pfh = IO::File->new($file) || die "Can not open protein kinase description file: $file $!\n";
+	while(<$pfh>) {
+		chomp;
+		my @pm = split(/\t/, $_, 2);
+		$hash{$pm[0]} = $pm[1];
+	}
+	$pfh->close;
+	return (\%hash);
 }
 
 =head2
@@ -1152,10 +1149,10 @@ sub send_mail
 	my $job_id = $input_file; $job_id =~ s/.*\///ig;
 	my $download_link = "http://bioinfo.bti.cornell.edu/cgi-bin/itak/online_itak.cgi?rid=$job_id"; 
 	my %mail = ( To => $address,
-           	     From => 'bioinfo@cornell.edu',
-		     Subject => "[iTAK] analysis for $job_id is finished",
-            	     Message => "Hi,\n the analysis for $job_id is finished. Please view and download your result through link $download_link\nThank you for using iTAK.\n"
-           );
+				From => 'bioinfo@cornell.edu',
+				Subject => "[iTAK] analysis for $job_id is finished",
+				Message => "Hi,\n the analysis for $job_id is finished. Please view and download your result through link $download_link\nThank you for using iTAK.\n"
+	);
 
   	#sendmail(%mail) or die $Mail::Sendmail::error;
 	#print "OK. Log says:\n", $Mail::Sendmail::log, "\n\n";

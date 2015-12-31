@@ -6,6 +6,8 @@
  yz357@cornell.edu
 
  update
+	[Nov-11-2015][v1.6]: fix bug of NOZZLE family
+	[Nov-03-2015][v1.6]: improve the family comparison code
 	[Nov-02-2015][v1.6]: update database to Pfam 28, change DUF822 to BES1_N according to Pfam 28
 	[Jan-26-2015][v1.5]: combination rules for plantTFDB and plnTFDB, new classification system for future rule update
 	[Jan-19-2014][v1.4]: new category system for plant protein kinase, build by Shiu et al. 2012 
@@ -377,7 +379,13 @@ USAGE:  perl $0 [options] input_seq
 			}
 		}
 
-		next if scalar(keys(%pkinase_id)) == 0;
+		if (scalar(keys(%pkinase_id)) == 0) {
+			$report_info.= "  no protein was identified as protein kinase\n";
+			$report_info.= "Finished\n";
+			$report_info.= "#" x 80;
+        	print $report_info."\n";
+			next;
+		}
 		
 		my $tmp_pkinase_seq = $temp_dir."/pkinase_seq.fa"; 
 		my $out1 = IO::File->new(">".$tmp_pkinase_seq) || die $!;
@@ -387,8 +395,8 @@ USAGE:  perl $0 [options] input_seq
 		$out1->close;
 
 		# ==== B2. compare input seq with databas ====
-                my $tmp_plantsp_hmmscan = "$temp_dir/protein_seq.plantsp.hmmscan.txt";
-                my $tmp_shiu_hmmscan    = "$temp_dir/protein_seq.shiu.hmmscan.txt";
+		my $tmp_plantsp_hmmscan = "$temp_dir/protein_seq.plantsp.hmmscan.txt";
+		my $tmp_shiu_hmmscan    = "$temp_dir/protein_seq.shiu.hmmscan.txt";
 		#my $tmp_rkd_hmmscan     = "$temp_dir/protein_seq.rkd.hmmscan.txt";
 
 		my $plantsp_hmmscan_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_plantsp_hmmscan $plantsp_db $tmp_pkinase_seq";
@@ -402,9 +410,9 @@ USAGE:  perl $0 [options] input_seq
 
 		# ==== B3. PK classification ====		
 		my ($plantsp_cat, $plantsp_aln) = itak_pk_classify($plantsp_detail, \%pkinase_id, "PPC:5.2.1");
-                my ($shiu_cat, $shiu_aln) = itak_pk_classify($shiu_detail, \%pkinase_id, "Group-other");
+		my ($shiu_cat, $shiu_aln) = itak_pk_classify($shiu_detail, \%pkinase_id, "Group-other");
 
-                # ==== B4 classification of sub pkinase ====
+		# ==== B4 classification of sub pkinase ====
 		my @wnk1 = ("$dbs_dir/Pkinase_sub_WNK1.hmm",   "30" , "PPC:4.1.5", "PPC:4.1.5.1");
 		my @mak  = ("$dbs_dir/Pkinase_sub_MAK.hmm", "460.15" , "PPC:4.5.1", "PPC:4.5.1.1");
 		my @sub = (\@wnk1, \@mak);
@@ -432,10 +440,10 @@ USAGE:  perl $0 [options] input_seq
 			print $seq_num."\t$cat\n";
 
 			# hmmscan and parse hmm result
-        		my $ppc_hmm_result = $temp_dir."/temp_ppc_sub_hmmscan.txt";
-        		my $hmm_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $ppc_hmm_result $hmm_profile $ppc_seq";
+			my $ppc_hmm_result = $temp_dir."/temp_ppc_sub_hmmscan.txt";
+			my $hmm_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $ppc_hmm_result $hmm_profile $ppc_seq";
 			run_cmd($hmm_cmd);
-        		my ($ppc_hits, $ppc_detail) = itak::parse_hmmscan_result($ppc_hmm_result);
+			my ($ppc_hits, $ppc_detail) = itak::parse_hmmscan_result($ppc_hmm_result);
 			my @hit = split(/\n/, $ppc_detail);
 
 			foreach my $h (@hit) {
@@ -517,7 +525,7 @@ USAGE:  perl $0 [options] input_seq
 
 		# remove temp folder
 		unless ($debug) {
-			run_cmd("rm -rf $temp_dir") if -s $temp_dir;
+			#run_cmd("rm -rf $temp_dir") if -s $temp_dir;
 		}
 
 		# for online version

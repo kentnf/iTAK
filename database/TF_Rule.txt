@@ -9,7 +9,7 @@
 # 7. description
 #
 # Description of domain format
-# example: PF00001#2,PF00002#1
+# example: PF00001#2--PF00002#1
 # mean this rule require 2 of PF00001 domain and one of PF00002
 #
 # example; PF00001#2:PF00002#1
@@ -304,56 +304,50 @@ Type:TF
 Desc:NA
 //
 
-# ID:T0028
-# Name:HD-ZIP
-# Family:HB->HD-ZIP
-# Required:PF00046#1--PF01852#1:HD-ZIP#1
-# PlantTFDB do not provide HD-ZIP domain
-# Auxiiary:NA
-# Forbidden:NA
-# Type:TF
-# Desc:NA
-# //
+ID:T0028
+Name:KNOX
+Family:HB->KNOX
+Required:PF00046#1--PF03790#1--PF03791#1
+Auxiiary:NA
+Forbidden:NA
+Type:TF
+Desc:NA
+//
 
-# ID:T0029
-# Name:TALE
-# Family:HB->TALE
-# Required:PF00046#1--PF03798#1:BELL#1
-# PlantTFDB do not provide Bell domain
-# Auxiiary:NA
-# Forbidden:NA
-# Type:TF
-# Desc:NA
-# //
+ID:T0029
+Name:BELL
+Family:HB->BELL
+Required:PF00046#1--PF07526#1--PF05920#1
+Auxiiary:NA
+Forbidden:NA
+Type:TF
+Desc:NA
+//
 
-# ID:T0030
-# Name:WOX
-# Family:HB->WOX
-# Required:PF00046#1--WusType#1
-# PlantTFDB do not provide WusType domain
-# Auxiiary:NA
-# Forbidden:NA
-# Type:TF
-# Desc:NA
-# //
+ID:T0030
+Name:WOX
+Family:HB->WOX
+Required:PF00046#1--WUS-HB#1
+Auxiiary:NA
+Forbidden:NA
+Type:TF
+Desc:NA
+//
 
-# ID:T0031
-# Name:HB-PHD
-# Family:HB->HB-PHD
-# Required:PF00046#1--PF00628#1
-# Auxiiary:NA
-# Forbidden:NA
-# Type:TF
-# Desc:NA
-# //
+ID:T0031
+Name:HB-PHD
+Family:HB->HB-PHD
+Required:PF00046#1--PF00628#1
+Auxiiary:NA
+Forbidden:NA
+Type:TF
+Desc:NA
+//
 
 ID:T0032
-# Name:HB-other
-# Family:HB->HB-other
-# Using HB family first before generate hmm profile of HB subfamily
-Name:HB
-Family:HB
-Required:PF00046#1
+Name:HD-ZIP
+Family:HB->HD-ZIP
+Required:PF00046#1--PF01852#1:PF02183#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -361,6 +355,16 @@ Desc:NA
 //
 
 ID:T0033
+Name:HB-other
+Family:HB->HB-other
+Required:PF00046#1
+Auxiiary:NA
+Forbidden:NA
+Type:TF
+Desc:NA
+//
+
+ID:T0034
 Name:HRT
 Family:HRT
 Required:HRT#1
@@ -370,7 +374,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0034
+ID:T0035
 Name:HSF
 Family:HSF
 Required:PF00447#1
@@ -380,7 +384,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0035
+ID:T0036
 Name:LOB
 Family:LOB
 Required:PF03195#1
@@ -390,7 +394,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0036
+ID:T0037
 Name:LFY
 Family:LFY
 Required:PF01698#1
@@ -400,7 +404,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0037
+ID:T0038
 Name:MIKC
 Family:MADS->MIKC
 Required:PF00319#1--PF01486#1
@@ -410,7 +414,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0038
+ID:T0039
 Name:M-type
 Family:MADS->M-type
 Required:PF00319#1
@@ -420,7 +424,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0039
+ID:T0040
 Name:MYB
 Family:MYB_superfamily->MYB
 Required:PF00249#2
@@ -430,7 +434,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0040
+ID:T0041
 Name:MYB-related
 Family:MYB_superfamily->MYB-related
 Required:PF00249#1
@@ -440,7 +444,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0041
+ID:T0042
 Name:NAC
 Family:NAC
 Required:PF02365#1
@@ -450,7 +454,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0042
+ID:T0043
 Name:NF-X1
 Family:NF-X1
 Required:PF01422#1
@@ -460,7 +464,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0043
+ID:T0044
 Name:NF-YA
 Family:CCAAT->NF-YA
 Required:PF02045#1
@@ -470,7 +474,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0044
+ID:T0045
 Name:NF-YB
 Family:CCAAT->NF-YB
 Required:NF-YB#1
@@ -480,7 +484,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0045
+ID:T0046
 Name:NF-YC
 Family:CCAAT->NF-YC
 Required:NF-YC#1
@@ -490,7 +494,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0046
+ID:T0047
 Name:RWP-RK
 Family:RWP-RK
 Required:PF02042#1
@@ -500,10 +504,10 @@ Type:TF
 Desc:NA
 //
 
-ID:T0047
+ID:T0048
 Name:NOZZLE
 Family:NOZZLE
-Required:PF08744#1
+Required:NOZZLE_Angio#1
 # Same as NZZ/SPL in PlantTFDB
 Auxiiary:NA
 Forbidden:NA
@@ -511,7 +515,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0048
+ID:T0049
 Name:S1Fa-like
 Family:S1Fa-like
 Required:PF04689#1
@@ -521,7 +525,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0049
+ID:T0050
 Name:SAP
 Family:SAP
 Required:STER_AP#1
@@ -532,7 +536,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0050
+ID:T0051
 Name:SBP
 Family:SBP
 Required:PF03110#1
@@ -542,7 +546,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0051
+ID:T0052
 Name:SRS
 Family:SRS
 Required:PF05142#1
@@ -552,7 +556,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0052
+ID:T0053
 Name:STAT
 Family:STAT
 Required:STAT#1
@@ -562,7 +566,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0053
+ID:T0054
 Name:TCP
 Family:TCP
 Required:PF03634#1
@@ -572,7 +576,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0054
+ID:T0055
 Name:Trihelix
 Family:Trihelix
 Required:Trihelix#1
@@ -582,7 +586,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0055
+ID:T0056
 Name:VOZ
 Family:VOZ
 Required:VOZ#1
@@ -592,7 +596,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0056
+ID:T0057
 Name:Whirly
 Family:Whirly
 Required:PF08536#1
@@ -602,7 +606,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0057
+ID:T0059
 Name:WRKY
 Family:WRKY
 Required:PF03106#1
@@ -612,7 +616,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0058
+ID:T0059
 Name:zf-HD
 Family:zf-HD
 Required:PF04770#1
@@ -622,7 +626,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0059
+ID:T0060
 Name:Tify
 Family:Tify
 Required:PF06200#1
@@ -632,7 +636,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0060
+ID:T0061
 Name:TUB
 Family:TUB
 Required:PF01167#1
@@ -642,7 +646,7 @@ Type:TF
 Desc:NA
 //
 
-# ID:T0061
+# ID:T0062
 # Name:WD40like
 # Family:WD40like
 # Required:
@@ -653,17 +657,17 @@ Desc:NA
 # Desc:NA
 # //
 
-ID:T0062
+ID:T0063
 Name:Alfin-like
 Family:Alfin-like
 Required:Alfin-like#1
 Auxiiary:NA
-Forbidden:PF02791#1;PF00046#1
+Forbidden:PF02791#1;PF00046#1;PF02373#1;PF02375#1
 Type:TF
 Desc:NA
 //
 
-ID:T0063
+ID:T0064
 Name:BSD
 Family:BSD
 Required:PF03909#2
@@ -673,7 +677,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0064
+ID:T0065
 Name:CSD
 Family:CSD
 Required:PF00313#1
@@ -683,7 +687,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0065
+ID:T0066
 Name:DBP
 Family:DBP
 Required:DNC#1--PF00481#1

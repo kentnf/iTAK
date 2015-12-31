@@ -19,3 +19,5 @@ NF-YB	61.0
 # min of true positive 89.1, max of false positive 32.9, median between 89.1 and 32.9 is 61
 STAT	150.0
 # the min STAT score is 154 for all 84 PlantTFDB STAT members
+WUS-HB	45.2
+# the min score is 61.5 for all 18 HB-WOX, the max score is 28.9 for other HB.

@@ -606,7 +606,7 @@ Type:TF
 Desc:NA
 //
 
-ID:T0059
+ID:T0058
 Name:WRKY
 Family:WRKY
 Required:PF03106#1
@@ -714,7 +714,7 @@ Family:LIM
 Required:PF00412#1
 Auxiiary:NA
 Forbidden:NA
-Type:TR
+Type:TF
 Desc:NA
 //
 
@@ -1037,6 +1037,6 @@ Family:Orphans
 Required:PF06203#1;PF00643#1;PF00072#1;PF00412#1;PF02671#1;PF03925#1;PF09133#1;PF09425#1
 Auxiiary:NA
 Forbidden:NA
-Type:TF
+Type:TR
 Desc:NA
 //

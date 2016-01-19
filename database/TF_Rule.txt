@@ -33,8 +33,8 @@
 # //
 
 ID:T0001
-Name:AP2
-Family:AP2-ERF->AP2
+Name:AER-AP2
+Family:AER->AER-AP2
 Required:PF00847#2
 Auxiiary:NA
 Forbidden:NA
@@ -43,8 +43,8 @@ Desc:NA
 //
 
 ID:T0002
-Name:RAV
-Family:AP2-ERF->RAV
+Name:AER-RAV
+Family:AER->AER-RAV
 Required:PF00847#1--PF02362#1
 Auxiiary:NA
 Forbidden:NA
@@ -53,8 +53,8 @@ Desc:NA
 //
 
 ID:T0003
-Name:ARF
-Family:B3_superfamily->ARF
+Name:B3-ARF
+Family:B3->B3-ARF
 Required:PF02362#1--PF06507#1
 Auxiiary:NA
 Forbidden:NA
@@ -63,8 +63,8 @@ Desc:NA
 //
 
 ID:T0004
-Name:ERF
-Family:AP2-ERF->ERF
+Name:AER-ERF
+Family:AER->AER-ERF
 Required:PF00847#1
 Auxiiary:NA
 Forbidden:NA
@@ -74,7 +74,7 @@ Desc:NA
 
 ID:T0005
 Name:B3
-Family:B3_superfamily->B3
+Family:B3->B3
 Required:PF02362#1
 Auxiiary:NA
 Forbidden:PF00847#1:PF06507#1
@@ -253,8 +253,8 @@ Desc:NA
 //
 
 ID:T0023
-Name:ARR-B
-Family:GARP->ARR-B
+Name:GARP-ARR-B
+Family:GARP->GARP-ARR-B
 Required:G2-like#1--PF00249#1--PF00072#1
 # PlantTFDB do not have Myb_DNA-bindg(PF00249) domain 
 Auxiiary:NA
@@ -264,8 +264,8 @@ Desc:NA
 //
 
 ID:T0024
-Name:G2-like
-Family:GARP->G2-like
+Name:GARP-G2-like
+Family:GARP->GARP-G2-like
 Required:G2-like#1
 Auxiiary:NA
 Forbidden:PF00072#1
@@ -305,8 +305,8 @@ Desc:NA
 //
 
 ID:T0028
-Name:KNOX
-Family:HB->KNOX
+Name:HB-KNOX
+Family:HB->HB-KNOX
 Required:PF00046#1--PF03790#1--PF03791#1
 Auxiiary:NA
 Forbidden:NA
@@ -315,8 +315,8 @@ Desc:NA
 //
 
 ID:T0029
-Name:BELL
-Family:HB->BELL
+Name:HB-BELL
+Family:HB->HB-BELL
 Required:PF00046#1--PF07526#1--PF05920#1
 Auxiiary:NA
 Forbidden:NA
@@ -325,8 +325,8 @@ Desc:NA
 //
 
 ID:T0030
-Name:WOX
-Family:HB->WOX
+Name:HB-WOX
+Family:HB->HB-WOX
 Required:PF00046#1--WUS-HB#1
 Auxiiary:NA
 Forbidden:NA
@@ -345,8 +345,8 @@ Desc:NA
 //
 
 ID:T0032
-Name:HD-ZIP
-Family:HB->HD-ZIP
+Name:HB-HD-ZIP
+Family:HB->HB-HD-ZIP
 Required:PF00046#1--PF01852#1:PF02183#1
 Auxiiary:NA
 Forbidden:NA
@@ -405,8 +405,8 @@ Desc:NA
 //
 
 ID:T0038
-Name:MIKC
-Family:MADS->MIKC
+Name:MADS-MIKC
+Family:MADS->MADS-MIKC
 Required:PF00319#1--PF01486#1
 Auxiiary:NA
 Forbidden:NA
@@ -415,8 +415,8 @@ Desc:NA
 //
 
 ID:T0039
-Name:M-type
-Family:MADS->M-type
+Name:MADS-M-type
+Family:MADS->MADS-M-type
 Required:PF00319#1
 Auxiiary:NA
 Forbidden:NA
@@ -426,7 +426,7 @@ Desc:NA
 
 ID:T0040
 Name:MYB
-Family:MYB_superfamily->MYB
+Family:MYB->MYB
 Required:PF00249#2
 Auxiiary:NA
 Forbidden:PF04433#1;PF01388#1;PF00072#1;PF00176#1
@@ -436,7 +436,7 @@ Desc:NA
 
 ID:T0041
 Name:MYB-related
-Family:MYB_superfamily->MYB-related
+Family:MYB->MYB-related
 Required:PF00249#1
 Auxiiary:NA
 Forbidden:PF04433#1;PF01388#1;PF00072#1;PF00176#1;G2-like#1;Trihelix#1
@@ -466,7 +466,7 @@ Desc:NA
 
 ID:T0044
 Name:NF-YA
-Family:CCAAT->NF-YA
+Family:NF-Y->NF-YA
 Required:PF02045#1
 Auxiiary:NA
 Forbidden:NA
@@ -476,7 +476,7 @@ Desc:NA
 
 ID:T0045
 Name:NF-YB
-Family:CCAAT->NF-YB
+Family:NF-Y->NF-YB
 Required:NF-YB#1
 Auxiiary:NA
 Forbidden:NA
@@ -486,7 +486,7 @@ Desc:NA
 
 ID:T0046
 Name:NF-YC
-Family:CCAAT->NF-YC
+Family:NF-Y->NF-YC
 Required:NF-YC#1
 Auxiiary:NA
 Forbidden:NA
@@ -670,7 +670,7 @@ Desc:NA
 ID:T0064
 Name:BSD
 Family:BSD
-Required:PF03909#2
+Required:PF03909#1--PF08567#1
 Auxiiary:NA
 Forbidden:NA
 Type:TF

@@ -33,8 +33,8 @@
 # //
 
 ID:T0001
-Name:AER-AP2
-Family:AER->AER-AP2
+Name:AP2/ERF-AP2
+Family:AP2/ERF->AP2/ERF-AP2
 Required:PF00847#2
 Auxiiary:NA
 Forbidden:NA
@@ -43,8 +43,8 @@ Desc:NA
 //
 
 ID:T0002
-Name:AER-RAV
-Family:AER->AER-RAV
+Name:AP2/ERF-RAV
+Family:AP2/ERF->AP2/ERF-RAV
 Required:PF00847#1--PF02362#1
 Auxiiary:NA
 Forbidden:NA
@@ -63,8 +63,8 @@ Desc:NA
 //
 
 ID:T0004
-Name:AER-ERF
-Family:AER->AER-ERF
+Name:AP2/ERF-ERF
+Family:AP2/ERF->AP2/ERF-ERF
 Required:PF00847#1
 Auxiiary:NA
 Forbidden:NA

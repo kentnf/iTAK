@@ -6,6 +6,7 @@
  yz357@cornell.edu
 
  update
+	[DEC-30-2015][v1.6]: update HB superfamily for add 6 subfamilies
 	[Nov-11-2015][v1.6]: fix bug of NOZZLE family
 	[Nov-03-2015][v1.6]: improve the family comparison code
 	[Nov-02-2015][v1.6]: update database to Pfam 28, change DUF822 to BES1_N according to Pfam 28
@@ -38,147 +39,11 @@ getopts('a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:u:v:w:x:y:z:h', \%options);
 unless (defined $options{'t'} ) { $options{'t'} = 'identify'; }	 # set default tool
 
 if		($options{'t'} eq 'identify')	{ itak_identify(\%options, \@ARGV); }
-elsif	($options{'t'} eq 'compare')	{ itak_compare(\%options, \@ARGV); }
 else	{ usage($version); }
 
 #################################################################
 # kentnf: subroutine						#
 #################################################################
-=head2
- itak_compare -- compare classification 
-=cut
-sub itak_compare
-{
-	my ($options, $files) = @_;
-
-	my $usage = qq'
-USAGE: $0 -t compare -f family_name ath_tf_classification.txt 
-
-* please use ath_pep to perform identification
-* the PlnTFDB and PlantTFDB is locate in database folder
-
-';
-	print $usage and exit unless $$files[0];
-	die "[ERR]fdr not exist\n" unless -s $$files[0];
-	my $fdr = $$files[0];
-	
-	my $dbs_dir = ${FindBin::RealBin}."/database";
-	my $pln	    = "$dbs_dir/PlnTFDB_Ath.txt";
-	my $plant   = "$dbs_dir/PlantTFDB_Ath.txt";
-	my $input   = "$fdr/tf_classification.txt";
-	my $align   = "$fdr/tf_alignment.txt";
-
-	# load family information to hash
-	my $family;
-	$family = $$options{'f'} if defined $$options{'f'};
-
-	my %uid;
-	my %plnTFDB     = load_family($pln, 2, 3);
-	my %plantTFDB   = load_family($plant, 2, 3);
-	my %iTAK        = load_family($input, 1, 2);
-
-	# load alignment informat to hash
-	my %iTAK_align;
-	my $fha = IO::File->new($align) || die $!;
-	while(<$fha>)
-	{
-		chomp;
-		my @a = split(/\t/, $_);
-		my ($pfam_id, $pfam_name, $score) = ($a[1], $a[9], $a[11]);
-		my $combine_info = "$pfam_id;$pfam_name;$score";
-
-		if (defined $iTAK_align{$a[0]}) {
-			$iTAK_align{$a[0]}.="\t".$combine_info;
-		} else {
-			$iTAK_align{$a[0]} = $combine_info;
-		}	
-	}
-	$fha->close;
-
-	# making comparison
-	foreach my $ida (sort keys %plnTFDB)	{ $uid{$ida} = 1; }
-	foreach my $ida (sort keys %plantTFDB)	{ $uid{$ida} = 1; }
-	foreach my $ida (sort keys %iTAK)	{ $uid{$ida} = 1; }
-
-	my @tr = qw/ARID AUX.IAA Coactivator=p15 DDT GNAT HMG IWS1 Jumonji LUG MBF1 MED6 MED7 PHD Pseudo=ARR-B RB Rcd1-like SET SNF2 SOH1 SWI.SNF-BAF60b SWI.SNF-SWI3 TRAF Alfin-like BSD CSD DBP LIM mTERF OFP PLATZ sigma70-like TAZ TIG ULT VARL zn-clus Orphans Sigma70-like TUB Tify/;
-	my %tr;
-	foreach my $tr (@tr) {
-        	$tr =~ s/\./\//;
-	        $tr =~ s/=/ /;
-	        $tr{$tr} = 1;
-	}
-	# foreach my $t (sort keys %tr) { print $t."\n"; } exit;
-
-	my %tbs = qw/CO-like C2C2-CO-like Dof C2C2-Dof GATA C2C2-GATA YABBY C2C2-YABBY LSD C2C2-LSD LBD LOB Nin-like RWP-RK ZF-HD zf-HD MYB_related MYB-related/;
-	$tbs{'E2F/DP'} = 'E2F-DP';
-	$tbs{'NZZ/SPL'} = 'NOZZLE';
-
-	my %tas = qw/PBF-2-like Whirly/;
-	$tas{'BBR/BPC'} = "BBR-BPC";
-
-	my ($ta, $tb, $tc);
-	print "ID\tPlnTFDB\tPlantTFDB\tiTAK\n";
-	foreach my $id (sort keys %uid)
-	{
-        	defined $plnTFDB{$id} and $ta = $plnTFDB{$id} or $ta = "NA";
-	        defined $plantTFDB{$id} and $tb = $plantTFDB{$id} or $tb = 'NA';
-	        defined $iTAK{$id} and $tc = $iTAK{$id} or $tc = 'NA';
-	        #$ta = $tas{$ta} if defined $tas{$ta};
-	        #$tb = $tbs{$tb} if defined $tbs{$tb};
-	        #next if ($ta eq $tb && $tb eq $tc);
-	        #next if (defined $tr{$ta} && $ta eq $tc && $tb eq 'NA');
-
-	        #if ($ta eq 'MADS' && ($tb eq 'M-type' || $tb eq 'MIKC')) {
-	        #        next if $tb eq $tc;
-	        #}
-
-	        #if ($ta eq 'AP2-EREBP' && ($tb eq 'AP2' || $tb eq 'ERF' || $tb eq 'RAV')) {
-	        #        next if $tb eq $tc;
-	        #}
-
-	        #if ($ta eq 'ABI3VP1' && ($tb eq 'B3' || $tb eq 'ARF')) {
-	        #        next if $tb eq $tc;
-	        #}
-
-	        #if ($ta eq 'CCAAT' && ($tb eq 'NF-YA' || $tb eq 'NF-YB' || $tb eq 'NF-YC')) {
-        	#        next if $tb eq $tc;
-	        #}
-
-	        #if ($ta eq 'NA' &&  $tb eq 'NF-X1' && $tc eq 'NF-X1') { next; }
-
-	        #if ($ta eq 'NA' &&  $tb eq 'C2C2-LSD' && $tc eq 'C2C2-LSD') { next; }
-
-	        #if ($ta eq "HB") { next; }
-
-		my $alignment = 'No align';
-		$alignment = $iTAK_align{$id} if defined $iTAK_align{$id};
-
-		if ($family) {
-			if ( $family eq $ta || $family eq $tb || $family eq $tc) { print "$id\t$ta\t$tb\t$tc\t$alignment\n"; }
-		} else {
-			print "$id\t$ta\t$tb\t$tc\t$alignment\n";
-		}
-	}
-}
-
-# load tf family
-sub load_family 
-{
-	my ($file, $gene_col, $family_col) = @_;
-	my %gene_family;
-	my $fh = IO::File->new($file) || die "$file $!";
-	while(<$fh>)
-	{
-		chomp;
-		next if $_ =~ m/^#/;
-		my @a = split(/\t/, $_);
-		my $id = $a[$gene_col-1];
-		$gene_family{$id} = $a[$family_col-1];
-	}
-	$fh->close;
-	return %gene_family;
-}
-
 =head2
  itak_identify -- identification of TFs or PKs
 =cut
@@ -917,9 +782,9 @@ sub compare_rule
 			$r_status = 1 if $match_status == 2;
 			if ($match_status == 2) {
 
-				#print "$rid\t$domain_num\t$match_score\n";
+				print "$rid\t$domain_num\t$match_score\n";
 
-				if ($domain_num > $total_domain && $match_score > $total_score) {
+				if ($domain_num >= $total_domain && $match_score > $total_score) {
 					$total_domain = $domain_num;
 					$total_score  = $match_score;
 					$rule_id = $rid;

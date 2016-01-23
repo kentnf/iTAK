@@ -781,13 +781,20 @@ sub compare_rule
 			my $domain_num = scalar(@r);
 			$r_status = 1 if $match_status == 2;
 			if ($match_status == 2) {
-
-				print "$rid\t$domain_num\t$match_score\n";
-
-				if ($domain_num >= $total_domain && $match_score > $total_score) {
+				# print "$rid\t$domain_num\t$match_score\n";
+				if ($total_domain == 0 && $total_score == 0) 
+				{
 					$total_domain = $domain_num;
 					$total_score  = $match_score;
 					$rule_id = $rid;
+				}
+				else
+				{
+					if ($domain_num >= $total_domain && $match_score > $total_score && $rid ne 'T9999') {
+						$total_domain = $domain_num;
+						$total_score  = $match_score;
+						$rule_id = $rid;
+					}
 				}
 			}
 		}

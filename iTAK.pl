@@ -390,7 +390,7 @@ USAGE:  perl $0 [options] input_seq
 
 		# remove temp folder
 		unless ($debug) {
-			run_cmd("rm -rf $temp_dir") if -s $temp_dir;
+			#run_cmd("rm -rf $temp_dir") if -s $temp_dir;
 		}
 
 		# for online version

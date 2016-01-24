@@ -782,18 +782,40 @@ sub compare_rule
 			$r_status = 1 if $match_status == 2;
 			if ($match_status == 2) {
 				# print "$rid\t$domain_num\t$match_score\n";
-				if ($total_domain == 0 && $total_score == 0) 
-				{
-					$total_domain = $domain_num;
-					$total_score  = $match_score;
-					$rule_id = $rid;
-				}
-				else
-				{
-					if ($domain_num >= $total_domain && $match_score > $total_score && $rid ne 'T9999') {
+
+				# specific assign rules for orphans
+				if ($rid eq 'T9999') {
+					# assign 1st family to protein
+					if ($total_domain == 0 && $total_score == 0) {
 						$total_domain = $domain_num;
 						$total_score  = $match_score;
 						$rule_id = $rid;
+					}
+					else
+					{
+						if ($domain_num > $total_domain && $match_score > $total_score) {
+							$total_domain = $domain_num;
+							$total_score  = $match_score;
+							$rule_id = $rid;
+						}
+					}
+				} 
+				else
+				{
+					# assign 1st family to protein
+					if ($total_domain == 0 && $total_score == 0) 
+					{
+						$total_domain = $domain_num;
+						$total_score  = $match_score;
+						$rule_id = $rid;
+					}
+					else
+					{
+						if ($domain_num >= $total_domain && $match_score > $total_score) {
+							$total_domain = $domain_num;
+							$total_score  = $match_score;
+							$rule_id = $rid;
+						}
 					}
 				}
 			}

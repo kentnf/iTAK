@@ -1,5 +1,11 @@
+# using the default GA score for C2H2 and C3H will miss a number of TFs 
 PF00096.21	7.80
 PF00642.19	10.00
+#
+# the default cutoff of Zf-NF-X1 is low (2.2). While there are 3 gene hit to NF-X1, AT1G10170, AT2G02130, and AT5G05660 with best score 25.5, 11.9, and 19.9. While the AT2G0213 with 11.9 seems not NF-X1, so using high GA score 15.9 to filter it out
+PF01422.14	15.90
+#
+# Below scores were defined using the method described in PlnTFDB
 VARL	45.0
 Alfin-like	88.35
 VOZ	123.3
@@ -11,13 +17,13 @@ DNC	10.4
 LUFS	38.8
 G2-like	24.35
 Trihelix	26.4
-#CCAAT-Dr1	86.8
-# discard CCAAT-Dr1
-NF-YC	52.7
+# discard CCAAT-Dr1 for it was not required 
+# CCAAT-Dr1	86.8
 # min of true positive 76.9, max of false positive 28.7, median between 76.9 and 28.7 is 52.7
-NF-YB	61.0
+NF-YC	52.7
 # min of true positive 89.1, max of false positive 32.9, median between 89.1 and 32.9 is 61
-STAT	150.0
+NF-YB	61.0
 # the min STAT score is 154 for all 84 PlantTFDB STAT members
-WUS-HB	45.2
+STAT	150.0
 # the min score is 61.5 for all 18 HB-WOX, the max score is 28.9 for other HB.
+WUS-HB	45.2

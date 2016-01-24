@@ -711,7 +711,7 @@ Desc:NA
 ID:T0068
 Name:LIM
 Family:LIM
-Required:PF00412#1
+Required:PF00412#2
 Auxiiary:NA
 Forbidden:NA
 Type:TF

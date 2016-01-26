@@ -469,7 +469,7 @@ sub load_rule
  Description of domain rules
  PF00001 : domain ID, without version 
  #2 : number of requred domains
- '-' : and
+ '--' : and
  ':' : or members
  ';' : or rules
  '()' : priority

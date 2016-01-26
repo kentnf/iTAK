@@ -429,7 +429,7 @@ Name:MYB
 Family:MYB->MYB
 Required:PF00249#2
 Auxiiary:NA
-Forbidden:PF04433#1;PF01388#1;PF00072#1;PF00176#1
+Forbidden:PF04433#1:PF01388#1:PF00072#1:PF00176#1
 Type:TF
 Desc:NA
 //
@@ -439,7 +439,7 @@ Name:MYB-related
 Family:MYB->MYB-related
 Required:PF00249#1
 Auxiiary:NA
-Forbidden:PF04433#1;PF01388#1;PF00072#1;PF00176#1;G2-like#1;Trihelix#1
+Forbidden:PF04433#1:PF01388#1:PF00072#1:PF00176#1:G2-like#1:Trihelix#1
 Type:TF
 Desc:NA
 //
@@ -508,7 +508,6 @@ ID:T0048
 Name:NOZZLE
 Family:NOZZLE
 Required:NOZZLE_Angio#1
-# Same as NZZ/SPL in PlantTFDB
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -529,7 +528,6 @@ ID:T0050
 Name:SAP
 Family:SAP
 Required:STER_AP#1
-# Same as SAP in PlantTFDB
 Auxiiary:NA
 Forbidden:NA
 Type:TF
@@ -662,7 +660,7 @@ Name:Alfin-like
 Family:Alfin-like
 Required:Alfin-like#1
 Auxiiary:NA
-Forbidden:PF02791#1;PF00046#1;PF02373#1;PF02375#1
+Forbidden:PF02791#1:PF00046#1:PF02373#1:PF02375#1
 Type:TF
 Desc:NA
 //
@@ -764,7 +762,8 @@ Name:TAZ
 Family:TAZ
 Required:PF02135#1
 Auxiiary:NA
-Forbidden:PF00628#1
+Forbidden:NA
+#Forbidden:PF00628#1
 Type:TR
 Desc:NA
 //
@@ -825,7 +824,7 @@ Name:AUX/IAA
 Family:AUX/IAA
 Required:PF02309#1
 Auxiiary:NA
-Forbidden:PF06507#1;PF02362#1
+Forbidden:PF06507#1:PF02362#1
 Type:TR
 Desc:NA
 //
@@ -845,7 +844,7 @@ Name:DDT
 Family:DDT
 Required:PF02791#1
 Auxiiary:NA
-Forbidden:Alfin-like#1;PF00046#1
+Forbidden:Alfin-like#1:PF00046#1
 Type:TR
 Desc:NA
 //
@@ -865,7 +864,7 @@ Name:HMG
 Family:HMG
 Required:PF00505#1
 Auxiiary:NA
-Forbidden:PF01388#1;PF04690#1
+Forbidden:PF01388#1:PF04690#1
 Type:TR
 Desc:NA
 //
@@ -885,7 +884,7 @@ Name:Jumonji
 Family:Jumonji
 Required:PF02373#1:PF02375#1
 Auxiiary:NA
-Forbidden:Alfin-like#1;PF01388#1;PF00096#1
+Forbidden:Alfin-like#1:PF01388#1:PF00096#1
 Type:TR
 Desc:NA
 //
@@ -935,7 +934,7 @@ Name:PHD
 Family:PHD
 Required:PF00628#1
 Auxiiary:NA
-Forbidden:Alfin-like#1;PF02791#1;PF00046#1;PF02373#1;PF02375#1;PF00249#1;PF00642#1
+Forbidden:Alfin-like#1:PF02791#1:PF00046#1:PF02373#1:PF02375#1:PF00249#1:PF00642#1:PF02135#1
 Type:TR
 Desc:NA
 //
@@ -975,7 +974,7 @@ Name:SET
 Family:SET
 Required:PF00856#1
 Auxiiary:NA
-Forbidden:PF03638#1;PF00628#1;PF00096#1
+Forbidden:PF03638#1:PF00628#1:PF00096#1
 Type:TR
 Desc:NA
 //
@@ -985,7 +984,7 @@ Name:SNF2
 Family:SNF2
 Required:PF00176#1
 Auxiiary:NA
-Forbidden:PF00847#1;PF00628#1
+Forbidden:PF00847#1:PF00628#1
 Type:TR
 Desc:NA
 //
@@ -1025,7 +1024,7 @@ Name:TRAF
 Family:TRAF
 Required:PF00651#1
 Auxiiary:NA
-Forbidden:PF07707#1;PF00917#1;PF03000#1;PF02135#1
+Forbidden:PF07707#1:PF00917#1:PF03000#1:PF02135#1
 Type:TR
 Desc:NA
 //
@@ -1034,7 +1033,7 @@ Desc:NA
 ID:T9999
 Name:Orphans
 Family:Orphans
-Required:PF06203#1;PF00643#1;PF00072#1;PF00412#1;PF02671#1;PF03925#1;PF09133#1;PF09425#1
+Required:PF06203#1:PF00643#1:PF00072#1:PF00412#1:PF02671#1:PF03925#1:PF09133#1:PF09425#1
 Auxiiary:NA
 Forbidden:NA
 Type:TR

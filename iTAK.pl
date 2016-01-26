@@ -197,27 +197,28 @@ USAGE:  perl $0 [options] input_seq
 
 		# ==== Part A TF identification ====
 		# ==== A1. compare input seq with database ====
-		my ($hmmscan_hit_1, $hmmscan_detail_1);
+		my ($hmmscan_hit_1, $hmmscan_detail_1, $hmmscan_hit_1b);
 
 		if ($mode eq 'normal') {
 			my $hmmscan_command1 = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_pfam_hmmscan.a $pfam_db $input_protein_f";
 			my $hmmscan_command2 = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_pfam_hmmscan.b $sfam_db $input_protein_f";
 			run_cmd($hmmscan_command1) unless -s $tmp_pfam_hmmscan.".a"; # test code
 			run_cmd($hmmscan_command2) unless -s $tmp_pfam_hmmscan.".b"; # test code
-			($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($tmp_pfam_hmmscan.".a");
-			my ($hmmscan_hit_2, $hmmscan_detail_2) = itak::parse_hmmscan_result($tmp_pfam_hmmscan.".b");
+			($hmmscan_hit_1, $hmmscan_detail_1, $hmmscan_hit_1b) = itak::parse_hmmscan_result($tmp_pfam_hmmscan.".a");
+			my ($hmmscan_hit_2, $hmmscan_detail_2, $hmmscan_hit_2b) = itak::parse_hmmscan_result($tmp_pfam_hmmscan.".b");
 			$hmmscan_hit_1.= $hmmscan_hit_2;
 			$hmmscan_detail_1.= $hmmscan_detail_2;
+			$hmmscan_hit_1b.= $hmmscan_hit_2b;
 		} else {
 			my $hmmscan_command = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_pfam_hmmscan $tfam_db $input_protein_f";
 			run_cmd($hmmscan_command) unless -s $tmp_pfam_hmmscan; # test code
-			($hmmscan_hit_1, $hmmscan_detail_1) = itak::parse_hmmscan_result($tmp_pfam_hmmscan);
+			($hmmscan_hit_1, $hmmscan_detail_1, $hmmscan_hit_1b) = itak::parse_hmmscan_result($tmp_pfam_hmmscan);
 		}
 
 		my %align_pfam_hash = aln_to_hash($hmmscan_detail_1, \%ga_cutoff);
 
 		# ==== A2. TF identification ====
-		my %qid_tid = itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, \%ga_cutoff, \%tf_rule);
+		my %qid_tid = itak_tf_identify($hmmscan_hit_1, $hmmscan_detail_1, $hmmscan_hit_1b, \%ga_cutoff, \%tf_rule);
 		$report_info.= "  ".scalar(keys(%qid_tid))." of proteins were identified as transcription factors or transcriptional regulators\n";
 
 		# ==== A3. save the result ====
@@ -270,8 +271,8 @@ USAGE:  perl $0 [options] input_seq
 
 		run_cmd($plantsp_hmmscan_cmd) unless -s $tmp_plantsp_hmmscan;
 		run_cmd($shiu_hmmscan_cmd) unless -s $tmp_shiu_hmmscan;
-		my ($plantsp_hit, $plantsp_detail) = itak::parse_hmmscan_result($tmp_plantsp_hmmscan);
-		my ($shiu_hit, $shiu_detail)       = itak::parse_hmmscan_result($tmp_shiu_hmmscan);
+		my ($plantsp_hit, $plantsp_detail, $plantsp_hit_b) = itak::parse_hmmscan_result($tmp_plantsp_hmmscan);
+		my ($shiu_hit, $shiu_detail, $shiu_hit_b) = itak::parse_hmmscan_result($tmp_shiu_hmmscan);
 
 		# ==== B3. PK classification ====		
 		my ($plantsp_cat, $plantsp_aln) = itak_pk_classify($plantsp_detail, \%pkinase_id, "PPC:5.2.1");
@@ -293,11 +294,11 @@ USAGE:  perl $0 [options] input_seq
 			my $ppfh = IO::File->new(">".$ppc_seq) || die $!;
 			foreach my $seq_id (sort keys %$plantsp_cat) {
 				if ( $$plantsp_cat{$seq_id} eq $cat ) {
-               				die "[ERR]seq id: $seq_id\n" unless defined $seq_info{$seq_id}{'seq'};
-                                	print $ppfh ">".$seq_id."\n".$seq_info{$seq_id}{'seq'}."\n";
-                                	$seq_num++;
+					die "[ERR]seq id: $seq_id\n" unless defined $seq_info{$seq_id}{'seq'};
+					print $ppfh ">".$seq_id."\n".$seq_info{$seq_id}{'seq'}."\n";
+					$seq_num++;
 				}
-                        }
+			}
 			$ppfh->close;
 
 			# next if there is no seq
@@ -308,7 +309,7 @@ USAGE:  perl $0 [options] input_seq
 			my $ppc_hmm_result = $temp_dir."/temp_ppc_sub_hmmscan.txt";
 			my $hmm_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $ppc_hmm_result $hmm_profile $ppc_seq";
 			run_cmd($hmm_cmd);
-			my ($ppc_hits, $ppc_detail) = itak::parse_hmmscan_result($ppc_hmm_result);
+			my ($ppc_hits, $ppc_detail, $ppc_hits_b) = itak::parse_hmmscan_result($ppc_hmm_result);
 			my @hit = split(/\n/, $ppc_detail);
 
 			foreach my $h (@hit) {
@@ -685,10 +686,11 @@ NiLldekgelkiaDFGlakkl..eksseklttlvgtreYmAPEvllkakeytkkvDvWslGvilyelltgklpfsgesee
 =cut
 sub itak_tf_identify 
 {
-	my ($hmmscan_hit, $hmmscan_detail, $ga_cutoff, $tf_rule) = @_;
+	my ($hmmscan_hit, $hmmscan_detail, $hmmscan_hit_b, $ga_cutoff, $tf_rule) = @_;
 
 	chomp($hmmscan_hit);
 	chomp($hmmscan_detail);
+	chomp($hmmscan_hit_b);
 
 	# create hash for result
 	# key: query id of protein
@@ -699,6 +701,7 @@ sub itak_tf_identify
 	# key: query ID, score
 	# value: array of hmm hits, and score
 	# * filter hits with lower score using GA cutoff
+	my %query_hits_all;
 	my %query_hits;
 	my ($query_id, $pfam_id, $score, $evalue);
 	my @a = split(/\n/, $hmmscan_hit);
@@ -717,16 +720,47 @@ sub itak_tf_identify
 		} else {
 			$query_hits{$b[0]}{'pid'} = $pfam_id;
 			$query_hits{$b[0]}{'score'} = $score;
+			$query_hits_all{$b[0]} = 1;
+		}
+	}
+
+	# put hits domains to hash: query_hits_s (hit of sequence)
+	# key: query ID, score
+	# value: array of hmm hits, and score
+	# * filter hits with lower score using GA cutoff
+	my %query_hits_s;
+	my @c = split(/\n/, $hmmscan_hit_b);
+	foreach my $c (@c)
+	{
+		my @d = split(/\t/, $c);
+		($query_id, $pfam_id, $score, $evalue) = @d;
+		$pfam_id =~ s/\..*// if $pfam_id =~ m/^PF/;
+		die "[ERR]undef GA score for $pfam_id\n" unless defined $$ga_cutoff{$pfam_id};
+		next if $score < $$ga_cutoff{$pfam_id};
+
+		if (defined $query_hits{$d[0]}) {
+			$query_hits_s{$d[0]}{'pid'}.="\t".$pfam_id;
+			$query_hits_s{$d[0]}{'score'}.="\t".$score;
+		} else {
+			$query_hits_s{$d[0]}{'pid'} = $pfam_id;
+			$query_hits_s{$d[0]}{'score'} = $score;
+			$query_hits_all{$d[0]} = 1;
 		}
 	}
 
 	# compare query_hits with rules, 
-	foreach my $qid (sort keys %query_hits)
+	foreach my $qid (sort keys %query_hits_all)
 	{
-		my $hits = $query_hits{$qid}{'pid'};		# do not use hash for hit two same pfam domain
-		my $score = $query_hits{$qid}{'score'};	
+		my ($hits, $score) = ('', '');
+		$hits	= $query_hits{$qid}{'pid'} if defined $query_hits{$qid}{'pid'};
+		$score	= $query_hits{$qid}{'score'} if defined $query_hits{$qid}{'score'};	
+
+		my ($hits_s, $score_s) = ('', '');
+		$hits_s		= $query_hits_s{$qid}{'pid'} if defined $query_hits_s{$qid}{'pid'};
+		$score_s	= $query_hits_s{$qid}{'score'} if defined $query_hits_s{$qid}{'score'};
+
 		# print "$qid\t$hits\n";
-		my $rule_id = compare_rule($hits, $score, $tf_rule);
+		my $rule_id = compare_rule($hits, $score, $hits_s, $score_s, $tf_rule);
 		$qid_tid{$qid} = $rule_id if $rule_id ne 'NA';
 	}
 
@@ -739,7 +773,7 @@ sub itak_tf_identify
 =cut
 sub compare_rule
 {
-	my ($hmm_hit, $hmm_score, $rule_pack) = @_;
+	my ($hmm_hit, $hmm_score, $hmm_hit_s, $hmm_score_s, $rule_pack) = @_;
 	
 	my %rule = %$rule_pack; # unpack the rule
 
@@ -751,8 +785,11 @@ sub compare_rule
 	# the assign family to each protein according hits and ruls
 	my $rule_id = 'NA';
 
-	my @hits = split(/\t/, $hmm_hit);
-	my @score = split(/\t/, $hmm_score);
+	my @hits	= split(/\t/, $hmm_hit);
+	my @score	= split(/\t/, $hmm_score);
+	my @hits_s	= split(/\t/, $hmm_hit_s);
+	my @score_s	= split(/\t/, $hmm_score_s);
+
 	die "[ERR]hit num do not mach score num\n" unless (scalar @hits == scalar @score);
 
 	my $total_domain = 0;   # number of required domains used in classification
@@ -777,10 +814,17 @@ sub compare_rule
 		my $r_status = 0;
 		foreach my $required (sort keys %$required_h) {
 			my @r = split(/,/, $required);	
-			my ($match_status, $match_score) = compare_array(\@hits, \@score, \@r);
+			my ($match_status, $match_score)     = compare_array(\@hits, \@score, \@r);
+
+			# define several families need compare in sequence level
+			my ($match_status_b, $match_score_b) = (0, 0);
+			if ($rid eq 'T0008' || $rid eq 'T0008' || $rid eq 'T0011' || $rid eq 'T0023') {
+				($match_status_b, $match_score_b) = compare_array(\@hits_s, \@score_s, \@r);
+			}
 			my $domain_num = scalar(@r);
 			$r_status = 1 if $match_status == 2;
-			if ($match_status == 2) {
+			
+			if ($match_status == 2 || $match_status_b == 2) {
 				# print "$rid\t$domain_num\t$match_score\n";
 
 				# specific assign rules for orphans

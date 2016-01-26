@@ -15,29 +15,35 @@ use IO::File;
  Input: hmmscan result file name
 
  Output1: detail hits info, format is below:
-          GeneID	PfamID		GA	Evalue
-	  AT2G34620.1	PF02536.7	242.2	4.5e-72
+	GeneID      PfamID		GA	    Evalue
+	AT2G34620.1	PF02536.7	242.2	4.5e-72
 
  Output2: alignment of hits into, format is below:
-	  1. GeneID      -- AT1G01140.1
-	  2. PfamID      -- PF00069.18
-	  3. Query Start -- 19
-          4. Query End   -- 274
-	  5. Hit Start   -- 1
-          6. Hit End     -- 260
-          7. Query Seq   -- YEMGRTLGEGSFAKVKYAKNTVTGDQAAIKILDREKVF....
-	  8. Alignment   -- ye++++lG+Gsf+kV  ak+  tg++ A+Kil++e+  ....
-	  9. Hit Seq     -- yelleklGsGsfGkVykakkkktgkkvAvKilkkeeek....
-          10. GA Score   -- 241.4
-          11. Evalue     -- 6.9e-72 
-          12. Description-- Protein kinase domain
-          13. Qeury Len  -- 448
+	1. GeneID      -- AT1G01140.1
+	2. PfamID      -- PF00069.18
+	3. Query Start -- 19
+	4. Query End   -- 274
+	5. Hit Start   -- 1
+	6. Hit End     -- 260
+	7. Query Seq   -- YEMGRTLGEGSFAKVKYAKNTVTGDQAAIKILDREKVF....
+	8. Alignment   -- ye++++lG+Gsf+kV  ak+  tg++ A+Kil++e+  ....
+	9. Hit Seq     -- yelleklGsGsfGkVykakkkktgkkvAvKilkkeeek....
+	10. GA Score   -- 241.4
+	11. Evalue     -- 6.9e-72 
+	12. Description-- Protein kinase domain
+	13. Qeury Len  -- 448
+
+ Output3: for some hits, the best hits domain may not meet the requirement of significant
+          but multi-hits for one domain actually meet the GA cutoff. That why the GA score
+          has two values. One for overall, another for best domain
+	GeneID      PfamID      GA      Evalue
+    AT2G34620.1 PF02536.7   242.2   4.5e-72
 =cut
 sub parse_hmmscan_result
 {
 	my $hmm_result = shift;
 
-	my ($result_out1, $result_out2, $one_result, $align_detail, $hits);
+	my ($result_out1, $result_out2, $result_out3, $one_result, $align_detail, $hits);
 
 	my $rfh = IO::File->new($hmm_result) || die "Can not open hmmscan result file : $hmm_result $! \n";
 	while(<$rfh>)
@@ -90,7 +96,14 @@ sub parse_hmmscan_result
 						$jumper = 1;
 						#die "$hit_head_line\n ";
 					}
-					else { next; }
+					else 
+					{
+						my @b = split(/\s+/, $hit_head_line, 11);
+						next unless defined $b[2];
+						next unless ($b[2] =~ m/^\d+\.\d+/);
+						$result_out3.="$query_name\t$b[9]\t$b[2]\t$b[1]\n";
+						#print "$query_name\t$b[9]\t$b[2]\t$b[1]\n";
+					}
 				}
 
 				#########################################################
@@ -123,8 +136,7 @@ sub parse_hmmscan_result
 		}
 	}
 	$rfh->close;
-
-	return ($result_out1, $result_out2);
+	return ($result_out1, $result_out2, $result_out3);
 }
 
 sub parse_align

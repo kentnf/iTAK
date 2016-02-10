@@ -70,6 +70,7 @@ USAGE:  perl $0 [options] input_seq
 		print "[WARN]temp folder exist: $temp_dir\n" if -e $temp_dir;
 		die "[ERR]input file not exist\n" unless -s $f;
 	}
+	$debug = 1 if (defined $$options{'d'} && $$options{'d'} == 1);
 	
 	my $cpu = '20';
 	$cpu = $$options{'p'} if (defined $$options{'p'} && $$options{'p'} > 0); 
@@ -391,7 +392,7 @@ USAGE:  perl $0 [options] input_seq
 
 		# remove temp folder
 		unless ($debug) {
-			#run_cmd("rm -rf $temp_dir") if -s $temp_dir;
+			run_cmd("rm -rf $temp_dir") if -s $temp_dir;
 		}
 
 		# for online version
@@ -601,7 +602,6 @@ sub print_rule
 sub load_ga_cutoff 
 {
 	my ($pfam_db, $correct_ga, $sfam_db) = @_;
-
 
 	# put GA cutoff to hash
 	# key: pfam ID 
@@ -987,8 +987,7 @@ sub itak_tf_write_out
 =cut
 sub itak_pk_classify
 {
-        my ($hmmscan_detail, $pkinase_id, $other) = @_;
-
+	my ($hmmscan_detail, $pkinase_id, $other) = @_;
 	my %pk_id = %$pkinase_id;
 
 	chomp($hmmscan_detail);
@@ -996,12 +995,12 @@ sub itak_pk_classify
 
 	# put hmmscan hit to hash
 	# %hit: key: protein seq ID 
-	#       value: family id
+	#     value: family id
 	# %score: key: protein seq ID
 	# 	  value: best hit score for domain
 	# %best_hit_align: key: protein seq ID
-	# 		   value: best hit alignment
-        my %hit; my %score; my %best_hit_align;
+	#     value: best hit alignment
+	my %hit; my %score; my %best_hit_align;
 	foreach my $line (@hit_line) {
 		my @a = split(/\t/, $line);
 		if (defined $hit{$a[0]}) {
@@ -1023,8 +1022,7 @@ sub itak_pk_classify
 		$hit{$pid} = $other;
 		$best_hit_align{$pid} = '';
 	}
-
-        return (\%hit, \%best_hit_align);
+	return (\%hit, \%best_hit_align);
 }
 
 =head2 
@@ -1032,9 +1030,8 @@ sub itak_pk_classify
 =cut
 sub aln_to_hash
 {
-        my ($hmmscan_detail, $ga_cutoff) = @_;
-
-        my %aln_hash; # key: protein seq id; value: alignment information
+	my ($hmmscan_detail, $ga_cutoff) = @_;
+	my %aln_hash; # key: protein seq id; value: alignment information
 	chomp($hmmscan_detail);
 	my @detail_line = split(/\n/, $hmmscan_detail);
 	foreach my $line ( @detail_line ) {
@@ -1050,7 +1047,7 @@ sub aln_to_hash
 			$aln_hash{$a[0]} = $line."\n";
 		}
 	}
-        return %aln_hash;
+	return %aln_hash;
 }
 
 =head2

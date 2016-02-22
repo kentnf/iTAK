@@ -1029,10 +1029,10 @@ Type:TR
 Desc:NA
 //
 
-# orphans
+# Others
 ID:T9999
-Name:Orphans
-Family:Orphans
+Name:Others
+Family:Others
 Required:PF06203#1:PF00643#1:PF00072#1:PF00412#1:PF02671#1:PF03925#1:PF09133#1:PF09425#1
 Auxiiary:NA
 Forbidden:NA

@@ -258,7 +258,7 @@ USAGE:  perl $0 [options] input_seq
 			}
 
 			# for online version
-			if (defined $$options{'z'}) { run_cmd("tar -czvf $output_dir.tgz $output_dir"); }
+			if (defined $$options{'z'}) { run_cmd("tar -czf $output_dir.tgz $output_dir"); }
 			if (defined $$options{'s'}) { send_mail($$options{'s'}, $f); }
 			next;
 		}
@@ -336,21 +336,21 @@ USAGE:  perl $0 [options] input_seq
 		my $ppc_cat = $output_dir."/PPC_classification.txt";
 		my $ppc_aln = $output_dir."/PPC_alignment.txt";
 
-		my $ca_fh1 = IO::File->new(">".$ppc_cat) || die $!;
-		my $al_fh1 = IO::File->new(">".$ppc_aln) || die $!;
-		foreach my $pid (sort keys %$plantsp_cat) { 
-			print $ca_fh1 $pid."\t".$$plantsp_cat{$pid}."\t".$$pkid_des{$$plantsp_cat{$pid}}."\n"; 
-		}
+		#my $ca_fh1 = IO::File->new(">".$ppc_cat) || die $!;
+		#my $al_fh1 = IO::File->new(">".$ppc_aln) || die $!;
+		#foreach my $pid (sort keys %$plantsp_cat) { 
+		#	print $ca_fh1 $pid."\t".$$plantsp_cat{$pid}."\t".$$pkid_des{$$plantsp_cat{$pid}}."\n"; 
+		#}
                 
-		foreach my $pid (sort keys %$plantsp_cat) {
-			if (defined $align_pfam_hash{$pid} && defined $$plantsp_cat{$pid} ) {
-				print $al_fh1 $$plantsp_aln{$pid};
-				print $al_fh1 $align_pfam_hash{$pid};
-			} else {
-				die "Error! Do not have alignments in hmm3 parsed result\n";
-			}
-			# delete $pkinase_id{$pid};
-		}
+		#foreach my $pid (sort keys %$plantsp_cat) {
+		#	if (defined $align_pfam_hash{$pid} && defined $$plantsp_cat{$pid} ) {
+		#		print $al_fh1 $$plantsp_aln{$pid};
+		#		print $al_fh1 $align_pfam_hash{$pid};
+		#	} else {
+		#		die "Error! Do not have alignments in hmm3 parsed result\n";
+		#	}
+		#	# delete $pkinase_id{$pid};
+		#}
         
 		#foreach my $pid (sort keys %plantsp_cat) {
 		#	print $ca_fh1 $pid."\tPPC:1.Other\n";
@@ -361,8 +361,8 @@ USAGE:  perl $0 [options] input_seq
         #	}
         #}
 
-		$ca_fh1->close;
-		$al_fh1->close;
+		#$ca_fh1->close;
+		#$al_fh1->close;
 		
 		# output Shiu classification
 		my $shiu_cat_file = $output_dir."/shiu_classification.txt";
@@ -405,7 +405,7 @@ USAGE:  perl $0 [options] input_seq
 		}
 
 		# for online version
-		if (defined $$options{'z'}) { run_cmd("tar -czvf $output_dir.tgz $output_dir"); }
+		if (defined $$options{'z'}) { run_cmd("tar -czf $output_dir.tgz $output_dir"); }
 		if (defined $$options{'s'}) { send_mail($$options{'s'}, $f); }
 	}
 }

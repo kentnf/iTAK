@@ -251,6 +251,15 @@ USAGE:  perl $0 [options] input_seq
 			$report_info.= "Finished\n";
 			$report_info.= "#" x 80;
         	print $report_info."\n";
+
+			# remove temp folder
+			unless ($debug) {
+            	run_cmd("rm -rf $temp_dir") if -s $temp_dir;
+			}
+
+			# for online version
+			if (defined $$options{'z'}) { run_cmd("tar -czvf $output_dir.tgz $output_dir"); }
+			if (defined $$options{'s'}) { send_mail($$options{'s'}, $f); }
 			next;
 		}
 		

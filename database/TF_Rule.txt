@@ -815,7 +815,7 @@ Family:ARID
 Required:PF01388#1
 Auxiiary:NA
 Forbidden:NA
-Type:TF
+Type:TR
 Desc:NA
 //
 
@@ -885,7 +885,7 @@ Family:Jumonji
 Required:PF02373#1:PF02375#1
 Auxiiary:NA
 Forbidden:Alfin-like#1:PF01388#1:PF00096#1
-Type:TF
+Type:TR
 Desc:NA
 //
 

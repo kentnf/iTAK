@@ -53,7 +53,7 @@ Parameters:
 -o	[String]	Name of the output directory (default = "input file name" + "_output")
 ```
 
-####Output
+#### Output
 The Output from iTAK will be a list of files 
 
 ```
@@ -70,16 +70,16 @@ Shiu_classification.txt: classification of all identified protein kinases. A tab
 Shiu_alignment.txt: A tab-delimited txt file containing alignments of all identified protein kinases to the protein domain database.
 ```
 
-###Contribute
+### Contribute
 
 - Issue Tracker: github.com/iTAK/iTAK/issues
 - Source Code: github.com/iTAK/iTAK
 
-###Support
+### Support
 
 If you are having issues, please let us know.
 Contact us at http://bioinfo.bti.cornell.edu/cgi-bin/itak/contact.cgi
 
-###License
+### License
 
 The project is licensed under the BSD license.

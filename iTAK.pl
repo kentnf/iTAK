@@ -279,57 +279,63 @@ USAGE:  perl $0 [options] input_seq
 		my $shiu_hmmscan_cmd    = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_shiu_hmmscan    $shiu_db    $tmp_pkinase_seq";
 		#my $rkd_hmmscan_cmd     = "$hmmscan_bin --acc --notextw --cpu $cpu -o $tmp_rkd_hmmscan     $rkd_db    $tmp_pkinase_seq";
 
-		run_cmd($plantsp_hmmscan_cmd) unless -s $tmp_plantsp_hmmscan;
+		# === the plantsp classification will run with parameter c ===
+		my ($plantsp_hit, $plantsp_detail, $plantsp_hit_b);
+		my ($plantsp_cat, $plantsp_aln);
+		if (defined $$options{'c'}) {
+			run_cmd($plantsp_hmmscan_cmd) unless -s $tmp_plantsp_hmmscan;
+			($plantsp_hit, $plantsp_detail, $plantsp_hit_b) = itak::parse_hmmscan_result($tmp_plantsp_hmmscan);
+			($plantsp_cat, $plantsp_aln) = itak_pk_classify($plantsp_detail, \%pkinase_id, "PPC:5.2.1");
+
+			# ==== B4 classification of sub pkinase ====
+			my @wnk1 = ("$dbs_dir/Pkinase_sub_WNK1.hmm",   "30" , "PPC:4.1.5", "PPC:4.1.5.1");
+			my @mak  = ("$dbs_dir/Pkinase_sub_MAK.hmm", "460.15" , "PPC:4.5.1", "PPC:4.5.1.1");
+			my @sub = (\@wnk1, \@mak);
+
+			foreach my $s ( @sub ) {
+            	# check array info for sub classify
+            	die "[ERR]sub classify info ".join(",", @$s)."\n" unless scalar(@$s) == 4;
+            	my ($hmm_profile, $cutoff, $cat, $sub_cat) = @$s;
+
+            	# get seq for sub classify
+            	my $seq_num = 0;
+            	my $ppc_seq = "$temp_dir/temp_ppc_seq";
+            	my $ppfh = IO::File->new(">".$ppc_seq) || die $!;
+            	foreach my $seq_id (sort keys %$plantsp_cat) {
+                	if ( $$plantsp_cat{$seq_id} eq $cat ) {
+                    	die "[ERR]seq id: $seq_id\n" unless defined $seq_info{$seq_id}{'seq'};
+                    	print $ppfh ">".$seq_id."\n".$seq_info{$seq_id}{'seq'}."\n";
+                    	$seq_num++;
+                	}
+            	}
+            	$ppfh->close;
+
+            	# next if there is no seq
+            	next if $seq_num == 0;
+            	print $seq_num."\t$cat\n";
+
+            	# hmmscan and parse hmm result
+            	my $ppc_hmm_result = $temp_dir."/temp_ppc_sub_hmmscan.txt";
+            	my $hmm_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $ppc_hmm_result $hmm_profile $ppc_seq";
+            	run_cmd($hmm_cmd);
+            	my ($ppc_hits, $ppc_detail, $ppc_hits_b) = itak::parse_hmmscan_result($ppc_hmm_result);
+            	my @hit = split(/\n/, $ppc_detail);
+
+            	foreach my $h (@hit) {
+                	my @a = split(/\t/, $h);
+                	if ( $a[9] >= $cutoff ) {
+                    	$$plantsp_cat{$a[0]} = $sub_cat;
+                    	$$plantsp_aln{$a[0]} = $h."\n";
+                	}
+            	}
+			}
+		}
+
 		run_cmd($shiu_hmmscan_cmd) unless -s $tmp_shiu_hmmscan;
-		my ($plantsp_hit, $plantsp_detail, $plantsp_hit_b) = itak::parse_hmmscan_result($tmp_plantsp_hmmscan);
 		my ($shiu_hit, $shiu_detail, $shiu_hit_b) = itak::parse_hmmscan_result($tmp_shiu_hmmscan);
 
 		# ==== B3. PK classification ====		
-		my ($plantsp_cat, $plantsp_aln) = itak_pk_classify($plantsp_detail, \%pkinase_id, "PPC:5.2.1");
 		my ($shiu_cat, $shiu_aln) = itak_pk_classify($shiu_detail, \%pkinase_id, "Group-other");
-
-		# ==== B4 classification of sub pkinase ====
-		my @wnk1 = ("$dbs_dir/Pkinase_sub_WNK1.hmm",   "30" , "PPC:4.1.5", "PPC:4.1.5.1");
-		my @mak  = ("$dbs_dir/Pkinase_sub_MAK.hmm", "460.15" , "PPC:4.5.1", "PPC:4.5.1.1");
-		my @sub = (\@wnk1, \@mak);
-
-		foreach my $s ( @sub ) {
-			# check array info for sub classify
-			die "[ERR]sub classify info ".join(",", @$s)."\n" unless scalar(@$s) == 4;
-			my ($hmm_profile, $cutoff, $cat, $sub_cat) = @$s;
-
-			# get seq for sub classify
-			my $seq_num = 0;
-			my $ppc_seq = "$temp_dir/temp_ppc_seq";
-			my $ppfh = IO::File->new(">".$ppc_seq) || die $!;
-			foreach my $seq_id (sort keys %$plantsp_cat) {
-				if ( $$plantsp_cat{$seq_id} eq $cat ) {
-					die "[ERR]seq id: $seq_id\n" unless defined $seq_info{$seq_id}{'seq'};
-					print $ppfh ">".$seq_id."\n".$seq_info{$seq_id}{'seq'}."\n";
-					$seq_num++;
-				}
-			}
-			$ppfh->close;
-
-			# next if there is no seq
-			next if $seq_num == 0;
-			print $seq_num."\t$cat\n";
-
-			# hmmscan and parse hmm result
-			my $ppc_hmm_result = $temp_dir."/temp_ppc_sub_hmmscan.txt";
-			my $hmm_cmd = "$hmmscan_bin --acc --notextw --cpu $cpu -o $ppc_hmm_result $hmm_profile $ppc_seq";
-			run_cmd($hmm_cmd);
-			my ($ppc_hits, $ppc_detail, $ppc_hits_b) = itak::parse_hmmscan_result($ppc_hmm_result);
-			my @hit = split(/\n/, $ppc_detail);
-
-			foreach my $h (@hit) {
-				my @a = split(/\t/, $h);
-				if ( $a[9] >= $cutoff ) {
-					$$plantsp_cat{$a[0]} = $sub_cat;
-					$$plantsp_aln{$a[0]} = $h."\n";
-				}
-			}
-                }
 
 		# ==== B5 save result =====
 		# output plantsp classification
@@ -391,7 +397,12 @@ USAGE:  perl $0 [options] input_seq
 			my $cat1 = 'NA'; my $cat2 = 'NA';
 			$cat1 = $$plantsp_cat{$pid} if defined $$plantsp_cat{$pid};
 			$cat2 = $$shiu_cat{$pid} if defined $$shiu_aln{$pid};
-			print $out_pks ">$pid PlantsP:$cat1;Shiu:$cat2\n$seq_info{$pid}{'seq'}\n";
+
+			if (defined $$options{'c'}) {
+				print $out_pks ">$pid PlantsP:$cat1;Shiu:$cat2\n$seq_info{$pid}{'seq'}\n";
+			} else {
+				print $out_pks ">$pid Shiu:$cat2\n$seq_info{$pid}{'seq'}\n";
+			}
 		}
 		$out_pks->close;
 

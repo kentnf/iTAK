@@ -65,6 +65,7 @@ USAGE:  perl $0 [options] input_seq
 	print $usage and exit unless $$files[0];
 	foreach my $f (@$files) {
 		my $output_dir = $f."_output";
+		$output_dir = $$options{'o'} if (defined $$options{'o'}); 
 		my $temp_dir = $f."_temp";
 		print "[WARN]output folder exist: $output_dir\n" if -e $output_dir;
 		print "[WARN]temp folder exist: $temp_dir\n" if -e $temp_dir;
@@ -161,6 +162,7 @@ USAGE:  perl $0 [options] input_seq
 		# create folder for temp files and output files
 		my $temp_dir = $f."_temp";
 		my $output_dir = $f."_output";
+		$output_dir = $$options{'o'} if (defined $$options{'o'}); 
 		mkdir($temp_dir) unless -e $temp_dir;
 		mkdir($output_dir) unless -e $output_dir;
 

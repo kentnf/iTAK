@@ -186,13 +186,16 @@ USAGE:  perl $0 [options] input_seq
 			} else {
 				$nuleotide_num++;
 				# translate to proteins
-				my $seqobj = Bio::Seq->new(-seq=>$seq_info{$id}{'seq'}, -id=>$id);
-				my @prots = Bio::SeqUtils->translate_6frames($seqobj);				
-				for (my $i = 0; $i < @prots; $i++) {
-					my $nid = substr($prots[$i]->id, -3);
-					print $outp ">".$prots[$i]->id."\n".$prots[$i]->seq."\n" if defined $frame{$nid};
-					$seq_info{$prots[$i]->id}{'seq'} = $prots[$i]->seq;
-				}	
+
+
+				print ">".$id."\n".$seq_info{$id}{'seq'}."\n";
+				#my $seqobj = Bio::Seq->new(-seq=>$seq_info{$id}{'seq'}, -id=>$id);
+				#my @prots = Bio::SeqUtils->translate_6frames($seqobj);				
+				#for (my $i = 0; $i < @prots; $i++) {
+				#	my $nid = substr($prots[$i]->id, -3);
+				#	print $outp ">".$prots[$i]->id."\n".$prots[$i]->seq."\n" if defined $frame{$nid};
+				#	$seq_info{$prots[$i]->id}{'seq'} = $prots[$i]->seq;
+				#}	
 			}
 		}
 		$outp->close;

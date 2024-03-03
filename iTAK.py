@@ -6,9 +6,9 @@ import re
 import argparse
 from Bio import SeqIO
 from subprocess import call, CalledProcessError
-#import smtplib
-#from email.mime.text import MIMEText
-#from email.header import Header
+import smtplib
+from email.mime.text import MIMEText
+from email.header import Header
 
 import itakm
 
@@ -18,7 +18,7 @@ debug = False
 
 # send mail to user when analysis is done, deprecated in standalone version 
 # Example: send_mail("example@email.com", "/path/to/input_file")
-'''
+
 def send_mail(address, input_file):
     job_id = os.path.basename(input_file)
     download_link = f"http://bioinfo.bti.cornell.edu/cgi-bin/itak/online_itak.cgi?rid={job_id}"
@@ -36,7 +36,7 @@ def send_mail(address, input_file):
         print("Mail sent successfully.")
     except Exception as e:
         print(f"Failed to send mail: {e}")
-'''
+
 
 # example: run_cmd("echo 'Hello World'", debug=True)
 def run_cmd(cmd, debug=False):
@@ -513,12 +513,6 @@ def itak_tf_identify(hmmscan_hit, hmmscan_detail, hmmscan_hit_b, ga_cutoff, tf_r
         hits_s = query_hits_s[qid]['pid'] if qid in query_hits_s else ''
         score_s = query_hits_s[qid]['score'] if qid in query_hits_s else ''
 
-        print(hits)
-        print(score)
-        print(hits_s)
-        print(score_s)
-        print(tf_rule)
-
         rule_id = compare_rule(hits, score, hits_s, score_s, tf_rule)
         if rule_id != 'NA':
             qid_tid[qid] = rule_id
@@ -740,12 +734,13 @@ def itak_identify(options, files):
                     outp.write(f">{id}\n{seq_info[id]['seq']}\n")
                 else:
                     nucleotide_num += 1
-                    # Translate to proteins
-                    
+                    # just print nucleotide to screen 
+
                     print(f">{id}\n{seq_info[id]['seq']}\n")
-                    # seqobj = Bio.Seq(seq=seq_info[id]['seq'], id=id)
-                    # prots = Bio.SeqUtils.translate_6frames(seqobj)
-                    # for i, prot in enumerate(prots):
+                    # Translate to proteins
+                    #seqobj = Bio.Seq(seq=seq_info[id]['seq'], id=id)
+                    #prots = Bio.SeqUtils.translate_6frames(seqobj)
+                    #for i, prot in enumerate(prots):
                     #     nid = prot.id[-3:]
                     #     if nid in frame:
                     #         outp.write(f">{prot.id}\n{prot.seq}\n")
@@ -773,7 +768,7 @@ def itak_identify(options, files):
             hmmscan_hit_1b += hmmscan_hit_2b
         else:
             hmmscan_command = f"{hmmscan_bin} --acc --notextw --cpu {cpu} -o {tmp_pfam_hmmscan} {tfam_db} {input_protein_f}"
-            print(hmmscan_command)
+            # print(hmmscan_command)
             if os.path.exists(tmp_pfam_hmmscan) and os.path.getsize(tmp_pfam_hmmscan) > 0:
                 print("alignment file exist")
             else:
@@ -792,6 +787,8 @@ def itak_identify(options, files):
         output_alignment = f"{output_dir}/tf_alignment.txt"
         output_classification = f"{output_dir}/tf_classification.txt"
         itak_tf_write_out(qid_tid, seq_info, hmmscan_detail_1, tf_rule, output_sequence, output_alignment, output_classification)
+
+        print(report_info)
 
         # ==== Part B PK identification ====
         # ==== B1. get protein kinase seqs ====
@@ -842,12 +839,12 @@ def itak_identify(options, files):
         # === the plantsp classification will run with parameter c ===
         plantsp_hit, plantsp_detail, plantsp_hit_b = '', '', ''
         plantsp_cat, plantsp_aln = '', ''
-        if 'c' in options:
-            if not os.path.getsize(tmp_plantsp_hmmscan):
+        if 'c' in options and options['c'] is True:
+            if not os.path.exists(tmp_plantsp_hmmscan):
                 run_cmd(plantsp_hmmscan_cmd)
             
             plantsp_hit, plantsp_detail, plantsp_hit_b = itakm.parse_hmmscan_result(tmp_plantsp_hmmscan)
-            plantsp_cat, plantsp_aln = itak_pk_classify(plantsp_detail, pkinase_id={}, ppc_code="PPC:5.2.1")
+            plantsp_cat, plantsp_aln = itak_pk_classify(plantsp_detail, pkinase_id, "PPC:5.2.1")
             
             # Classification of sub pkinase
             sub_classifications = [
@@ -901,7 +898,8 @@ def itak_identify(options, files):
         ppc_aln = os.path.join(output_dir, "PPC_alignment.txt")
 
         # option c for report both PPC and Shiu classifcation
-        if 'c' in options:
+        if 'c' in options and options['c'] is True:
+            # print(plantsp_cat)
             with open(ppc_cat, 'w') as ca_fh1, open(ppc_aln, 'w') as al_fh1:
                 for pid in sorted(plantsp_cat.keys()):
                     ca_fh1.write(f"{pid}\t{plantsp_cat[pid]}\t{pkid_des[plantsp_cat[pid]]}\n")
@@ -939,7 +937,7 @@ def itak_identify(options, files):
                     out_pks.write(f">{pid} Shiu:{cat2}\n{seq_info[pid]['seq']}\n")
 
         # report information 
-        report_info = f"{len(pkinase_id)} of proteins were identified as protein kinase\nFinished\n" + "#" * 80
+        report_info = f"  {len(pkinase_id)} of proteins were identified as protein kinase\nFinished\n" + "#" * 80
         print(report_info)
 
         # remove temp folder
@@ -948,10 +946,10 @@ def itak_identify(options, files):
                 os.system(f"rm -rf {temp_dir}")
 
         # code for online version 
-        if 'z' in options:
+        if 'z' in options and options['z'] is True:
             os.system(f"tar -czf {output_dir}.tgz {output_dir}")
-        if 's' in options:
-            send_mail(options['s'], f)  # 假设send_mail是一个定义好的函数
+        if 's' in options and options['s'] is not None:
+            send_mail(options['s'], f) 
 
      
 def main():
@@ -971,7 +969,6 @@ def main():
     # Convert arguments to dictionary format and call the main function
     options_dict = vars(args)
     print(options_dict)
-    sys.exit(1)
     itak_identify(options_dict, args.seq_files)
 
 if __name__ == "__main__":

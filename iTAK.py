@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import sys
 import os
@@ -53,6 +53,38 @@ def run_cmd(cmd, debug=False):
     except CalledProcessError as e:
         print(f"[ERR]cmd: {cmd}")
         raise
+
+def get_db_path():
+    # check conda prefix and db path in conda env
+    conda_prefix = os.getenv('CONDA_PREFIX')
+    if conda_prefix:
+        db_path = os.path.join(conda_prefix, 'share', 'itak', 'database')
+        if os.path.exists(db_path):
+            return db_path
+    # check current dir db path
+    current_dir_dbpath = os.path.join(os.getcwd(), 'database')
+    if os.path.exists(current_dir_dbpath):
+        return current_dir_dbpath
+
+    # return None if can not find path
+    return None
+
+
+def get_bin_path():
+    # check conda prefix and bin path in conda env
+    conda_prefix = os.getenv('CONDA_PREFIX')
+    if conda_prefix:
+        bin_path = os.path.join(conda_prefix, 'bin')
+        if os.path.exists(bin_path):
+            return bin_path
+    # check current dir bin path
+    current_dir_binpath = os.path.join(os.getcwd(), 'bin')
+    if os.path.exists(current_dir_binpath):
+        return current_dir_binpath
+
+    # return None if can not find path
+    return None
+
 
 def is_nucleotide(sequence):
     nucleotide_set = set("ACGTUacgtu")
@@ -612,9 +644,9 @@ def itak_identify(options, files):
     
     mode = options['m']
 
-    # Set database and script paths
-    bin_dir = os.path.join(os.getcwd(), "bin")
-    dbs_dir = os.path.join(os.getcwd(), "database")
+    # determine database and bin paths
+    bin_dir = get_bin_path()
+    dbs_dir = get_db_path()
     bin_files = [
         "hmmscan", "hmmpress"
     ]

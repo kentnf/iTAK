@@ -1,85 +1,42 @@
-# iTAK
+# iTAK v2
 
-iTAK is a bioinformatics software tool for easy and logical identificatoin of
-plant trasnscription factors and transcription domains as defined by Lehti-Shiu MD, Shiu S-H (2012).
-iTAK utilizes both plnTFDB and plantTFBD as referance databases
+iTAK is a comprehensive tool designed for the identification and classification of plant transcription factors (TFs), transcriptional regulators (TRs), and protein kinases (PKs) within plant genome sequences. Originally developed in Perl, iTAK v2 has been completely rewritten in Python, offering enhanced performance, usability, and additional features.
 
-Read the paper and cite the paper t http://authors.elsevier.com/sd/article/S1674205216302234
+## New Features in v2.0.1
 
-## Getting Started
+- **Rewritten in Python:** Complete rewrite in Python for improved performance and easier maintenance.
+- **Extended Database:** The latest Pfam database.
+- **Custom Classification:** Users can customize the identification and classification rules of a certain gene family, not limited to TFs and PKs.
+- **Bioconda Package:** iTAK v2 is now available as a Bioconda package, simplifying installation and management.
 
-If you're running linux, iTAK has a very simple setup. The only outside
-requirnments are an up to date installation of BioPerl. iTAK comes with a
-precompiled version of hmm.
+## Installation
 
-If you're not using linux, then a custom installation of hmm will need to be
-done, and a copy of all binaries will need to be placed in the /bin folder of
-iTAK
+iTAK can be easily installed via Bioconda with the following command:
 
-To download iTAK you cna either download it from our website
-ftp://bioinfo.bti.cornell.edu/pub/program/itak/old or clone this github repo
-using 
-
-```
-github clone https://github.com/kentnf/iTAK.git
+```bash
+conda install -c bioconda itak
 ```
 
-## Test Install
+Ensure you have Conda installed and set up before running the installation command. For more detailed installation instructions, including setting up Conda, please refer to the [Bioconda documentation](https://bioconda.github.io/).
 
-Once bioperl is installed you can test your installation of iTAK by running
+## Usage
 
-```
-perl iTAK.pl test_seq 
-```
+After installation, iTAK can be run from the command line. Here's a basic example to get you started:
 
-### Running iTAK
-
-iTAK is a relativly simple program to call
-
-Example:
-
-```
-perl iTAK.pl Multifasta -o ItakOutput
-
-Parameters:
-
--f	[String]	Frame used for nucleotide translation.
-	6: 6 frame translation (default) 
-	3F: 3 frame translation with forward strand 
-	3R: 3 frame translation with reverse strand
-
--a	[Integer]	Number of CPUs used for hmmscan (default = 1)
-
--o	[String]	Name of the output directory (default = "input file name" + "_output")
+```bash
+iTAK.py <sequence_file>
 ```
 
-#### Output
-The Output from iTAK will be a list of files 
+## Documentation
 
-```
-tf_sequence.fasta: sequences of all identified TFs/TRs (FASTA format).
+For more information on installation, usage, and customization, please visit the [iTAK documentation page](https://github.com/kentnf/iTAK/wiki).
 
-tf_classification.txt: classification of all identified TFs/TRs. A tab-delimited txt file containing sequence IDs and their families.
+## Support
 
-tf_alignment.txt: A tab-delimited txt file containing alignments of all identified TFs/TRs to the protein domain database.
+If you encounter any issues or have questions regarding iTAK, please open an issue on our [GitHub repository](https://github.com/kentnf/iTAK/issues), and we will be glad to assist.
 
-pk_sequence.fasta: sequences of all identified PKs (FASTA format).
+## Citation
 
-Shiu_classification.txt: classification of all identified protein kinases. A tab-delimited txt file containing sequence IDs and their corresponding protein kinase families.
+If you use iTAK in your research, please consider citing our publication:
 
-Shiu_alignment.txt: A tab-delimited txt file containing alignments of all identified protein kinases to the protein domain database.
-```
-
-### Contribute
-
-- Issue Tracker: github.com/iTAK/iTAK/issues
-- Source Code: github.com/iTAK/iTAK
-
-### Support
-
-If you are having issues, please let us know.
-Contact us at http://bioinfo.bti.cornell.edu/cgi-bin/itak/contact.cgi
-
-### License
-
-The project is licensed under the BSD license.
+[Zheng Y, Jiao C, Sun H, Rosli HG, Pombo MA, Zhang P, Banf M, Dai X, Martin GB, Giovannoni JJ, Zhao PX, Rhee SY, Fei Z, "iTAK: a program for genome-wide prediction and classification of plant transcription factors, transcriptional regulators, and protein kinases," Molecular Plant, 2016.](https://www.sciencedirect.com/science/article/pii/S1674205216302234)

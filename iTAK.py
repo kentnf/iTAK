@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-import sys, os, re, platform, argparse, tempfile, requests, subprocess
+import sys, os, re, platform, argparse, tempfile, requests, subprocess, shutil, smtplib
 from Bio import SeqIO
 from Bio.Seq import Seq
 from pathlib import Path
 # from subprocess import run, call, CalledProcessError
-from shutil import copytree, rmtree, which
-import smtplib
+# from shutil import copytree, rmtree, which
 from email.mime.text import MIMEText
 from email.header import Header
 
@@ -15,6 +14,15 @@ import itakm
 # Define the iTAK version and debug mode
 version = 2.0
 debug = False
+
+
+def check_package_installed(package_name):
+    result = subprocess.run(['conda', 'list'], capture_output=True, text=True)
+    installed_packages = [line.split()[0] for line in result.stdout.splitlines()[2:]]
+    if package_name in installed_packages:
+        return True
+    else:
+        return False
 
 
 def check_os():
@@ -35,7 +43,7 @@ def check_hmmer():
         # run hmmscan command 
         subprocess.run(["hmmscan", "-h"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         print("HMMER is installed.")
-        hmmscan_path = os.path.dirname(which("hmmscan"))
+        hmmscan_path = os.path.dirname(shutil.which("hmmscan"))
         return hmmscan_path
     except subprocess.CalledProcessError:
         # if failed, return the state
@@ -78,24 +86,25 @@ def download_and_extract(url, temp_dir):
     # uncompress the tar.gz  
     subprocess.run(['tar', '-xzf', temp_dir / local_filename, '-C', temp_dir], check=True)
 
-def copy_hmm_files(temp_dir, dest_dir):
+
+def copy_files(temp_dir, dest_dir):
     temp_db_path = temp_dir / 'iTAK-db-v1/database'
     if temp_db_path.exists():
-        hmm_files_path = temp_db_path.glob('*.hmm')
+        all_files = temp_db_path.glob('*')
+
         dest_database_path = Path(dest_dir)
         dest_database_path.mkdir(parents=True, exist_ok=True)
-        for hmm_file in hmm_files_path:
-            # 注意：这里应使用 shutil.copy 而非 copytree，因为我们在复制文件而非目录
-            from shutil import copy
-            copy(hmm_file, dest_database_path / hmm_file.name)
+
+        for file_or_dir in all_files:
+            if file_or_dir.is_file():
+                shutil.copy(file_or_dir, dest_database_path / file_or_dir.name)
+            elif file_or_dir.is_dir():
+                shutil.copytree(file_or_dir, dest_database_path / file_or_dir.name)
 
 
 def check_and_prepare_database(dbs_path, url, database_files, bin_path):
     #and check/build db files
     missing_files = check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
-
-    # print(missing_files)
-    # print(len(missing_files))
 
     # dowload database files and check/build db files 
     if len(missing_files) > 0:
@@ -113,9 +122,35 @@ def check_and_prepare_database(dbs_path, url, database_files, bin_path):
             #    print("Error:", result.stderr)
 
             # copy db files, check and build database   
-            copy_hmm_files(temp_dir, dbs_path)
+            copy_files(temp_dir, dbs_path)
             check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
 
+def check_specific_families(dbs_path):
+    spec_path = dbs_path + '/specific'
+    hmm_files = [f for f in os.listdir(spec_path) if f.endswith('.hmm')]
+    spec_families = []
+
+    for hmm_file in hmm_files:
+        txt_file = os.path.splitext(hmm_file)[0] + '.txt'
+        txt_path = os.path.join(spec_path, txt_file)
+
+        if os.path.exists(txt_path):
+            spec_families.append(os.path.splitext(hmm_file)[0])
+
+    return spec_families
+
+
+def update_database(dbs_path, url, database_files, bin_path):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+        
+        # download and extract database files
+        download_and_extract(url, temp_dir)
+
+        # copy db files, check and build database   
+        copy_files(temp_dir, dbs_path)
+        check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
+    
 
 # send mail to user when analysis is done, deprecated in standalone version 
 # Example: send_mail("example@email.com", "/path/to/input_file")
@@ -158,7 +193,8 @@ def run_cmd(cmd, debug=False):
 def get_db_path():
     # check conda prefix and db path in conda env
     conda_prefix = os.getenv('CONDA_PREFIX')
-    if conda_prefix:
+    itak_installed = check_package_installed('itak')
+    if conda_prefix and itak_installed:
         db_path = os.path.join(conda_prefix, 'share', 'itak', 'database')
         if os.path.exists(db_path):
             return db_path
@@ -196,8 +232,6 @@ def seq_to_hash(input_file):
     """
     put seq info to hash
     """
-    from Bio import SeqIO
-
     seq_info = {}
     in_ = SeqIO.parse(input_file, 'fasta')
     for inseq in in_:
@@ -1065,7 +1099,10 @@ def itak_identify(args, bin_dir, dbs_dir, database_files):
         if args.compress is True:
             os.system(f"tar -czf {output_dir}.tgz {output_dir}")
         if args.email is not None:
-            send_mail(options['s'], f) 
+            send_mail(args.email, f) 
+
+def specific_identify(args, bin_path, dbs_path):
+    return None
 
      
 def main():
@@ -1092,7 +1129,7 @@ def main():
     if len(missing_rule) > 0:
         print(f"Can not find rule file: {missing_rule}")
         sys.exit(1)
-      
+    
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='iTAK -- Plant Transcription factor & Protein Kinase Identifier and Classifier')
     parser.add_argument('seq_files', nargs='+', help='Input sequence file(s)')
@@ -1107,6 +1144,8 @@ def main():
     parser.add_argument('-e', '--email', help='E-mail address. iTAK will send email when analysis is done. For online version only.')
     args = parser.parse_args()
 
+    print(args)
+
     # update the database and rules to latest version
     if args.update:
         print(args.update)
@@ -1114,8 +1153,11 @@ def main():
     # identification and classification with user-defined rules and databases
     elif args.specific is not None:
         print(args.specific)
-        # specific_identify(args, bin_path, dbs_path)
-
+        spec_families = check_specific_families(dbs_path)
+        if args.specific in spec_families:
+            specific_identify(args, bin_path, dbs_path)
+        else:
+            print(f"Can not find rules and database for {args.specific}")
     else:
         itak_identify(args, bin_path, dbs_path, database_files)
 

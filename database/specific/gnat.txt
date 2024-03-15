@@ -1,0 +1,43 @@
+# this rule is update on 20141103
+# Description of each column
+# 1. order of rule, the rule with small order number will have high priority
+# 2. name of the rule -- subfamily
+# 3. parent name of the rule -- superfamily
+# 4. required domain
+# 5. auxiliary domain
+# 6. forbidden domain
+# 7. description
+#
+# Description of domain format
+# example: PF00001#2--PF00002#1
+# mean this rule require 2 of PF00001 domain and one of PF00002
+#
+# example; PF00001#2:PF00002#1
+# mean this rule require 2 of PF00001 domain or one of PF00002
+#
+# example; PF00001#2:(PF00002#1,PF00003#1)
+# mean this rule require 1 of PF00002 domain and 1 of PF00003, or just required 2 of PF00001
+#  
+# ** no rule for parent name: it just a category, do not have any rules
+#
+# discard PF05909 (IWS_c) who is merged into PF08711 (Med26)
+
+# ID:T0000
+# Name:name01
+# Family:family01
+# Required:PF00001#2-PF00002#1
+# Auxiliary:PF00001#2;PF00002#1-PF00003#1:PF00004#1
+# Forbidden:PF00001#2;PF00002#1
+# Type:TF
+# Desc:test rule
+# //
+
+D:T5005
+Name:GNAT
+Family:GNAT
+Required:PF00583#1
+Auxiliary:NA
+Forbidden:PF00628#1
+Type:TR
+Desc:NA
+//

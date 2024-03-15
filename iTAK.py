@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-import sys
-import os
-import re
-import argparse
+import sys, os, re, platform, argparse, tempfile, requests, subprocess
 from Bio import SeqIO
-from subprocess import call, CalledProcessError
+from Bio.Seq import Seq
+from pathlib import Path
+# from subprocess import run, call, CalledProcessError
+from shutil import copytree, rmtree, which
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
@@ -15,6 +15,107 @@ import itakm
 # Define the iTAK version and debug mode
 version = 2.0
 debug = False
+
+
+def check_os():
+    try:
+        os_name = platform.system()
+        if os_name not in ["Linux", "Darwin"]:
+            raise Exception(f"Unsupported operating system: {os_name}")
+        else:
+            print(f"Running on supported OS: {os_name}")
+    except Exception as e:
+        print(f"Error: {e}")
+        print(f"iTAK does not support running on {os_name}")
+        sys.exit(1)
+
+
+def check_hmmer():
+    try:
+        # run hmmscan command 
+        subprocess.run(["hmmscan", "-h"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        print("HMMER is installed.")
+        hmmscan_path = os.path.dirname(which("hmmscan"))
+        return hmmscan_path
+    except subprocess.CalledProcessError:
+        # if failed, return the state
+        print("HMMER is installed, but there was a problem running it.")
+        sys.exit(1)
+    except FileNotFoundError:
+        # if can not find hmmer
+        print("HMMER is not installed.")
+        sys.exit(1)
+
+# the ftype could be: rule, hmm, other
+def check_db_file_exit(db_path, database_files, ftype, bin_path):
+    missing_files = []
+    for file in database_files[ftype]:
+        full_path = os.path.join(db_path, file)
+        if os.path.exists(full_path):
+            if ftype == 'hmm':
+                # building database using hmmpress 
+                if not all(os.path.isfile(f"{full_path}.{ext}") for ext in ["h3f", "h3i", "h3m", "h3p"]):
+                    print(f"[WARN]no database file {full_path}")
+                    subprocess.call([os.path.join(bin_path, "hmmpress"), "-f", full_path])
+                else:
+                    print(f"Database file {full_path} is ready.")
+        else:
+            missing_files.append(file)
+            print(f"File does not exist: {full_path}")
+
+    return missing_files
+
+
+def download_and_extract(url, temp_dir):
+    # download file
+    local_filename = url.split('/')[-1]
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(temp_dir / local_filename, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+    # uncompress the tar.gz  
+    subprocess.run(['tar', '-xzf', temp_dir / local_filename, '-C', temp_dir], check=True)
+
+def copy_hmm_files(temp_dir, dest_dir):
+    temp_db_path = temp_dir / 'iTAK-db-v1/database'
+    if temp_db_path.exists():
+        hmm_files_path = temp_db_path.glob('*.hmm')
+        dest_database_path = Path(dest_dir)
+        dest_database_path.mkdir(parents=True, exist_ok=True)
+        for hmm_file in hmm_files_path:
+            # 注意：这里应使用 shutil.copy 而非 copytree，因为我们在复制文件而非目录
+            from shutil import copy
+            copy(hmm_file, dest_database_path / hmm_file.name)
+
+
+def check_and_prepare_database(dbs_path, url, database_files, bin_path):
+    #and check/build db files
+    missing_files = check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
+
+    # print(missing_files)
+    # print(len(missing_files))
+
+    # dowload database files and check/build db files 
+    if len(missing_files) > 0:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir = Path(temp_dir)
+        
+            # download and extract database files
+            download_and_extract(url, temp_dir)
+        
+            # list of database files (for debug)
+            #result = subprocess.run(['find', temp_dir, '-type', 'f'], capture_output=True, text=True)
+            #if result.returncode == 0:
+            #    print(result.stdout)
+            #else:
+            #    print("Error:", result.stderr)
+
+            # copy db files, check and build database   
+            copy_hmm_files(temp_dir, dbs_path)
+            check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
+
 
 # send mail to user when analysis is done, deprecated in standalone version 
 # Example: send_mail("example@email.com", "/path/to/input_file")
@@ -49,8 +150,8 @@ def run_cmd(cmd, debug=False):
         return True
 
     try:
-        call(cmd, shell=True)
-    except CalledProcessError as e:
+        subprocess.call(cmd, shell=True)
+    except subprocess.CalledProcessError as e:
         print(f"[ERR]cmd: {cmd}")
         raise
 
@@ -65,9 +166,9 @@ def get_db_path():
     current_dir_dbpath = os.path.join(os.getcwd(), 'database')
     if os.path.exists(current_dir_dbpath):
         return current_dir_dbpath
-
-    # return None if can not find path
-    return None
+    # can not find db path, reinstall the program
+    print(f"Can not find the database path, please re-install iTAK")
+    sys.exit(1)
 
 
 def get_bin_path():
@@ -108,6 +209,25 @@ def seq_to_hash(input_file):
             'seq': str(inseq.seq)
         }
     return seq_info
+
+def six_frame_translation(dna_sequence):
+    frames = []
+    for i in range(3):  # forward 3 frames
+        seq_mod = dna_sequence[i:]  
+        if len(seq_mod) % 3 != 0: 
+            seq_mod += "N" * (3 - len(seq_mod) % 3)  # add N to seq
+        translated_seq = seq_mod.translate()
+        frames.append(translated_seq)
+    
+    for i in range(3):  # reverse comp 3 frames 
+        seq_mod = dna_sequence.reverse_complement()[i:]
+        if len(seq_mod) % 3 != 0:
+            seq_mod += "N" * (3 - len(seq_mod) % 3)
+        translated_seq = seq_mod.translate()
+        frames.append(translated_seq)
+    
+    return frames
+
 
 # put hmmscan alignment detail to hash 
 def aln_to_hash(hmmscan_detail, ga_cutoff):
@@ -614,16 +734,17 @@ def itak_pk_classify(hmmscan_detail, pkinase_id, other):
 """
 main function of TF/PK identification.
 """
-def itak_identify(options, files):
+def itak_identify(args, bin_dir, dbs_dir, database_files):
+    # options, files
 
-    #print(options)
-    for f in files:
+
+    # itak_identify(args, bin_path, dbs_path, database_files)
+    # check and set up output folder
+    for f in args.seq_files:
         output_dir = f"{f}_output"
-        if 'o' in options and options['o'] is not None:
-            output_dir = options['o']
+        if args.output is not None:
+            output_dir = args.output
         temp_dir = f"{f}_temp"
-        #print(output_dir)
-        #sys.exit()
         if os.path.exists(output_dir):
             print(f"[WARN]output folder exist: {output_dir}")
         if os.path.exists(temp_dir):
@@ -632,68 +753,32 @@ def itak_identify(options, files):
             print("[ERR]input file not exist")
             sys.exit(1)
 
-    # Set CPUs for hmmscan
+    # set number of processes
     cpu = '20'
-    if 'p' in options and options['p'] > 0:
-        cpu = str(options['p'])
+    if args.process > 0:
+        cpu = str(args.process)
 
     # Frame for translate
     frame = '6'  # Default is 6
-    if 'f' in options and options['f'] in ('3F', '3R'):
-        frame = options['f']
-    
-    mode = options['m']
+    if args.frame in ('3F', '3R'):
+        frame = args.frame
 
-    # determine database and bin paths
-    bin_dir = get_bin_path()
-    dbs_dir = get_db_path()
-    bin_files = [
-        "hmmscan", "hmmpress"
-    ]
+    mode = args.mode
 
-    rule_files = [
-        "TF_Rule.txt", "GA_table.txt", "PK_class_desc.txt"
-    ]
-
-    # "Pfam-A.hmm",
-    databases = [
-        "Tfam_domain.hmm", "TF_selfbuild.hmm",
-        "PlantsPHMM3_89.hmm", "Plant_Pkinase_fam.hmm",
-        "Pkinase_sub_WNK1.hmm", "Pkinase_sub_MAK.hmm"   
-    ]
-
+    # set vars for database files, rule files, and hmmscan
     tfam_db = dbs_dir + "/Tfam_domain.hmm"  # database for transcription factors (subset of Pfam-A + customized). for quick mode
-    pfam_db = dbs_dir + "/Pfam-A.hmm"  # Pfam-A
-    sfam_db = dbs_dir + "/TF_selfbuild.hmm"  # self-build
+    sfam_db = dbs_dir + "/TF_selfbuild.hmm"  # self-build -- backup
     plantsp_db = dbs_dir + "/PlantsPHMM3_89.hmm"  # plantsP kinase
     shiu_db = dbs_dir + "/Plant_Pkinase_fam.hmm"  # shiu kinase database
-    Psub_wnk1 = dbs_dir + "/Pkinase_sub_WNK1.hmm"  # wnk1 hmm
-    Psub_MAK = dbs_dir + "/Pkinase_sub_MAK.hmm"  # MAK hmm
+    Psub_wnk1 = dbs_dir + "/Pkinase_sub_WNK1.hmm"  # wnk1 hmm  -- for plantsp 
+    Psub_MAK = dbs_dir + "/Pkinase_sub_MAK.hmm"  # MAK hmm  -- for plantsp
+    pfam_db = dbs_dir + "/Pfam-A.hmm"  # Pfam-A -- for normal mode, obsolete
 
     tf_rule = dbs_dir + "/TF_Rule.txt"  # Rules for Transcription Factors
     correct_ga = dbs_dir + "/GA_table.txt"  # update GA cutoff
     pk_desc = dbs_dir + "/PK_class_desc.txt"  # PK family description (for PPC)
+
     hmmscan_bin = bin_dir + "/hmmscan"  # hmmscan
-    hmmpress_bin = bin_dir + "/hmmpress"  # hmmpress
-
-    # Check bin fiels, rule files, and databases
-    for f in bin_files:
-        file_path = os.path.join(bin_dir, f)
-        if not os.path.isfile(file_path) or os.path.getsize(file_path) == 0:
-            print(f"[ERR]file not exist: {file_path}")
-            sys.exit(1)
-
-    for f in rule_files:
-        file_path = os.path.join(dbs_dir, f)
-        if not os.path.isfile(file_path) or os.path.getsize(file_path) == 0:
-            print(f"[ERR]file not exist: {file_path}")
-            sys.exit(1)
-
-    for db in databases:
-        db_path = os.path.join(dbs_dir, db)
-        if not all(os.path.isfile(f"{db_path}.{ext}") for ext in ["h3f", "h3i", "h3m", "h3p"]):
-            print(f"[WARN]no database file {db_path}")
-            call([os.path.join(bin_dir, "hmmpress"), "-f", db_path])
 
     # Load rules, GA cutoffs, and PK descriptions into dictionaries
     # -- load tf rules
@@ -705,13 +790,14 @@ def itak_identify(options, files):
         ga_cutoff = load_ga_cutoff(pfam_db, correct_ga, sfam_db)
     elif mode == 'quick':
         ga_cutoff = load_ga_cutoff(tfam_db, correct_ga, sfam_db)
+    else:
+        print(f"Mode error: {mode}")
+        sys.exit(1)
 
     # -- Convert pk_desc to a hash (dictionary in Python)
     pkid_des = pk_to_hash(pk_desc)
 
-
-	# +++++ prepare files for norm mode +++++
-	# the normal mode only used for iTAK database
+	# +++++ prepare files for norm mode (obsolete) +++++
     """
     if ($mode eq 'normal') {
         my $norm_db_cmd = "# please download and prepare Pfam database using below command:\n".
@@ -735,11 +821,11 @@ def itak_identify(options, files):
     """
 
     # Main processing loop for input files
-    for f in files:
+    for f in args.seq_files:
         temp_dir = f"{f}_temp"
         output_dir = f"{f}_output"
-        if 'o' in options and options['o'] is not None:
-            output_dir = options['o']
+        if args.output is not None:
+            output_dir = args.output
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
         if not os.path.exists(output_dir):
@@ -767,16 +853,14 @@ def itak_identify(options, files):
                 else:
                     nucleotide_num += 1
                     # just print nucleotide to screen 
-
                     print(f">{id}\n{seq_info[id]['seq']}\n")
-                    # Translate to proteins
-                    #seqobj = Bio.Seq(seq=seq_info[id]['seq'], id=id)
-                    #prots = Bio.SeqUtils.translate_6frames(seqobj)
-                    #for i, prot in enumerate(prots):
-                    #     nid = prot.id[-3:]
-                    #     if nid in frame:
-                    #         outp.write(f">{prot.id}\n{prot.seq}\n")
-                    #         seq_info[prot.id]['seq'] = prot.seq
+
+                    # Translate to proteins  
+                    translated_frames = six_frame_translation(Seq(seq_info[id]['seq']))
+                    for i, frame in enumerate(translated_frames, start=1):
+                        new_id = id + '-' + str(i)
+                        outp.write(f">{new_id}\n{frame}\n")
+                        seq_info[new_id] = {'seq': frame}
         report_info += f"  {protein_num} of input sequences are protein\n  {nucleotide_num} of input sequences are nucleotide\n"
 
         # ==== Part A TF identification ====
@@ -871,7 +955,7 @@ def itak_identify(options, files):
         # === the plantsp classification will run with parameter c ===
         plantsp_hit, plantsp_detail, plantsp_hit_b = '', '', ''
         plantsp_cat, plantsp_aln = '', ''
-        if 'c' in options and options['c'] is True:
+        if args.classify is True:
             if not os.path.exists(tmp_plantsp_hmmscan):
                 run_cmd(plantsp_hmmscan_cmd)
             
@@ -930,7 +1014,7 @@ def itak_identify(options, files):
         ppc_aln = os.path.join(output_dir, "PPC_alignment.txt")
 
         # option c for report both PPC and Shiu classifcation
-        if 'c' in options and options['c'] is True:
+        if args.classify is True:
             # print(plantsp_cat)
             with open(ppc_cat, 'w') as ca_fh1, open(ppc_aln, 'w') as al_fh1:
                 for pid in sorted(plantsp_cat.keys()):
@@ -963,7 +1047,7 @@ def itak_identify(options, files):
                 if pid in shiu_cat:
                     cat2 = shiu_cat[pid]
                 
-                if 'c' in options: # option c for report both PPC and Shiu classifcation
+                if args.classify: # option c for report both PPC and Shiu classifcation
                     out_pks.write(f">{pid} PlantsP:{cat1};Shiu:{cat2}\n{seq_info[pid]['seq']}\n")
                 else:
                     out_pks.write(f">{pid} Shiu:{cat2}\n{seq_info[pid]['seq']}\n")
@@ -978,30 +1062,62 @@ def itak_identify(options, files):
                 os.system(f"rm -rf {temp_dir}")
 
         # code for online version 
-        if 'z' in options and options['z'] is True:
+        if args.compress is True:
             os.system(f"tar -czf {output_dir}.tgz {output_dir}")
-        if 's' in options and options['s'] is not None:
+        if args.email is not None:
             send_mail(options['s'], f) 
 
      
 def main():
 
+    # define database files
+    database_files = {
+        'rule': ["TF_Rule.txt", "GA_table.txt", "PK_class_desc.txt"], 
+        'hmm': [
+            "Tfam_domain.hmm", "TF_selfbuild.hmm","PlantsPHMM3_89.hmm", 
+            "Plant_Pkinase_fam.hmm", "Pkinase_sub_WNK1.hmm", "Pkinase_sub_MAK.hmm"], 
+        'other': ["TF_selfbuild.sto"]
+        }
+    
+    # define the url of latest database
+    db_url_latest = "https://github.com/kentnf/iTAK/archive/refs/tags/db-v1.tar.gz"
+
+    # check whether the os is linux/macos, whether the hmmer and database files exist
+    check_os()
+    bin_path = check_hmmer()
+    dbs_path = get_db_path()
+    check_and_prepare_database(dbs_path, db_url_latest, database_files, bin_path)
+    # check rule files
+    missing_rule = check_db_file_exit(dbs_path, database_files, "rule", bin_path)
+    if len(missing_rule) > 0:
+        print(f"Can not find rule file: {missing_rule}")
+        sys.exit(1)
+      
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='iTAK -- Plant Transcription factor & Protein Kinase Identifier and Classifier')
     parser.add_argument('seq_files', nargs='+', help='Input sequence file(s)')
-    parser.add_argument('-f', help='Translate frame. (3F, 3R, 6; default = 6)', default='6')
-    parser.add_argument('-p', type=int, help='Number of CPUs used for hmmscan. (default = 1)', default=1)
-    parser.add_argument('-o', help='Name of the output directory. (default = \'input file name\' + \'_output\')')
-    parser.add_argument('-m', help='Mode, quick or normal, please do not change it. (default = quick)', default='quick')
-    parser.add_argument('-c', action='store_true', help='OBSOLETE: Enable protein kinase PPC classification . (default = disable)')
-    parser.add_argument('-z', action='store_true', help='Enable the compression of result files. For online version only. (default = disable)')
-    parser.add_argument('-s', help='E-mail address. iTAK will send email when analysis is done. For online version only.')
+    parser.add_argument('-f', '--frame', help='Translate frame. (3F, 3R, 6; default = 6)', default='6')
+    parser.add_argument('-p', '--process', type=int, help='Number of CPUs used for hmmscan. (default = 1)', default=1)
+    parser.add_argument('-u', '--update', action='store_true', help='Update the database.')
+    parser.add_argument('-s', '--specific', help='User-defined specific family name for identification and classification')
+    parser.add_argument('-o', '--output', help='Name of the output directory. (default = \'input file name\' + \'_output\')')
+    parser.add_argument('-m', '--mode', help='Mode, quick or normal, please do not change it. (default = quick)', default='quick')
+    parser.add_argument('-c', '--classify', action='store_true', help='OBSOLETE: Enable protein kinase PPC classification. (default = disable)')
+    parser.add_argument('-z', '--compress', action='store_true', help='Enable the compression of result files. For online version only. (default = disable)')
+    parser.add_argument('-e', '--email', help='E-mail address. iTAK will send email when analysis is done. For online version only.')
     args = parser.parse_args()
-    
-    # Convert arguments to dictionary format and call the main function
-    options_dict = vars(args)
-    print(options_dict)
-    itak_identify(options_dict, args.seq_files)
+
+    # update the database and rules to latest version
+    if args.update:
+        print(args.update)
+
+    # identification and classification with user-defined rules and databases
+    elif args.specific is not None:
+        print(args.specific)
+        # specific_identify(args, bin_path, dbs_path)
+
+    else:
+        itak_identify(args, bin_path, dbs_path, database_files)
 
 if __name__ == "__main__":
     main()

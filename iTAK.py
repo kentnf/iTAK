@@ -13,7 +13,7 @@ import itakm
 
 # Define the iTAK version and debug mode
 version = '2.0.2'
-db_version = '2.1'
+db_version = '2.1' # db-v1 iTAK2 database version 1
 debug = False
 
 
@@ -86,7 +86,7 @@ def download_and_extract(url, temp_dir, dbs_path):
     
     # uncompress the tar.gz and move files to database  
     subprocess.run(['tar', '-xzf', temp_dir / local_filename, '-C', temp_dir], check=True)
-    subprocess.run(f'cp -rf {temp_dir}/iTAK-db-v2/database/* {dbs_path}', shell=True, check=True)
+    subprocess.run(f'cp -rf {temp_dir}/iTAK-db-v1/database/* {dbs_path}', shell=True, check=True)
 
 def check_and_prepare_database(dbs_path, url, database_files, bin_path):
     #and check/build db files
@@ -1130,7 +1130,7 @@ def main():
         }
     
     # define the url of latest database
-    db_url_latest = "https://github.com/kentnf/iTAK/archive/refs/tags/db-v2.tar.gz"
+    db_url_latest = "https://github.com/kentnf/iTAK/archive/refs/tags/db-v1.tar.gz"
 
     # check whether the os is linux/macos, whether the hmmer and database files exist
     check_os()

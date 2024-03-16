@@ -1,5 +1,5 @@
 /old/
 /test_seq_output/
 /database/*
-!/database/
+!/database/db.txt
 /__pycache__/

@@ -1,4 +1,4 @@
 /old/
 /test_seq_output/
-/database/*.h3*
+/database/
 /__pycache__/

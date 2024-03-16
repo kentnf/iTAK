@@ -32,12 +32,12 @@
 # Desc:test rule
 # //
 
-D:T5005
-Name:GNAT
-Family:GNAT
-Required:PF00583#1
+ID:S1001
+Name:NBS-LRR
+Family:NBS-LRR
+Required:PF00931#1
 Auxiliary:NA
-Forbidden:PF00628#1
-Type:TR
-Desc:NA
+Forbidden:NA
+Type:SPECIFIC
+Desc:Disease Resistance Gene
 //

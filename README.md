@@ -2,7 +2,7 @@
 
 iTAK is a comprehensive tool designed for the identification and classification of plant transcription factors (TFs), transcriptional regulators (TRs), and protein kinases (PKs) within plant genome sequences. Originally developed in Perl, iTAK v2 has been completely rewritten in Python, offering enhanced performance, usability, and additional features.
 
-## New Features in v2.0.1
+## New Features in v2.0.2
 
 - **Rewritten in Python:** Complete rewrite in Python for improved performance and easier maintenance.
 - **Extended Database:** The latest Pfam database.

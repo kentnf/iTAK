@@ -173,8 +173,8 @@ def get_db_path():
     if os.path.exists(current_dir_dbpath):
         return current_dir_dbpath
     # can not find db path, reinstall the program
-    print(f"Can not find the database path, please re-install iTAK")
-    sys.exit(1)
+    print(f"Can not find the database path, please run iTAK.py to install database")
+    #sys.exit(1)
 
 
 def get_bin_path():

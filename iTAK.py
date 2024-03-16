@@ -164,10 +164,14 @@ def get_db_path():
     # check conda prefix and db path in conda env
     conda_prefix = os.getenv('CONDA_PREFIX')
     itak_installed = check_package_installed('itak')
-    if conda_prefix and itak_installed:
+    if conda_prefix:
         db_path = os.path.join(conda_prefix, 'share', 'itak', 'database')
         if os.path.exists(db_path):
             return db_path
+        else:
+            os.makedirs(db_path)
+            return db_path
+
     # check current dir db path
     current_dir_dbpath = os.path.join(os.getcwd(), 'database')
     if os.path.exists(current_dir_dbpath):
@@ -1136,6 +1140,7 @@ def main():
     check_os()
     bin_path = check_hmmer()
     dbs_path = get_db_path()
+    print(dbs_path)
     check_and_prepare_database(dbs_path, db_url_latest, database_files, bin_path)
     # check rule files
     missing_rule = check_db_file_exit(dbs_path, database_files, "rule", bin_path)

@@ -12,7 +12,8 @@ from email.header import Header
 import itakm
 
 # Define the iTAK version and debug mode
-version = 2.0
+version = '2.0.2'
+db_version = '2.1'
 debug = False
 
 
@@ -74,7 +75,7 @@ def check_db_file_exit(db_path, database_files, ftype, bin_path):
     return missing_files
 
 
-def download_and_extract(url, temp_dir):
+def download_and_extract(url, temp_dir, dbs_path):
     # download file
     local_filename = url.split('/')[-1]
     with requests.get(url, stream=True) as r:
@@ -82,25 +83,10 @@ def download_and_extract(url, temp_dir):
         with open(temp_dir / local_filename, 'wb') as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
-
-    # uncompress the tar.gz  
+    
+    # uncompress the tar.gz and move files to database  
     subprocess.run(['tar', '-xzf', temp_dir / local_filename, '-C', temp_dir], check=True)
-
-
-def copy_files(temp_dir, dest_dir):
-    temp_db_path = temp_dir / 'iTAK-db-v1/database'
-    if temp_db_path.exists():
-        all_files = temp_db_path.glob('*')
-
-        dest_database_path = Path(dest_dir)
-        dest_database_path.mkdir(parents=True, exist_ok=True)
-
-        for file_or_dir in all_files:
-            if file_or_dir.is_file():
-                shutil.copy(file_or_dir, dest_database_path / file_or_dir.name)
-            elif file_or_dir.is_dir():
-                shutil.copytree(file_or_dir, dest_database_path / file_or_dir.name)
-
+    subprocess.run(f'cp -rf {temp_dir}/iTAK-db-v2/database/* {dbs_path}', shell=True, check=True)
 
 def check_and_prepare_database(dbs_path, url, database_files, bin_path):
     #and check/build db files
@@ -112,7 +98,7 @@ def check_and_prepare_database(dbs_path, url, database_files, bin_path):
             temp_dir = Path(temp_dir)
         
             # download and extract database files
-            download_and_extract(url, temp_dir)
+            download_and_extract(url, temp_dir, dbs_path)
         
             # list of database files (for debug)
             #result = subprocess.run(['find', temp_dir, '-type', 'f'], capture_output=True, text=True)
@@ -120,9 +106,6 @@ def check_and_prepare_database(dbs_path, url, database_files, bin_path):
             #    print(result.stdout)
             #else:
             #    print("Error:", result.stderr)
-
-            # copy db files, check and build database   
-            copy_files(temp_dir, dbs_path)
             check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
 
 def check_specific_families(dbs_path):
@@ -138,19 +121,6 @@ def check_specific_families(dbs_path):
             spec_families.append(os.path.splitext(hmm_file)[0])
 
     return spec_families
-
-
-def update_database(dbs_path, url, database_files, bin_path):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir = Path(temp_dir)
-        
-        # download and extract database files
-        download_and_extract(url, temp_dir)
-
-        # copy db files, check and build database   
-        copy_files(temp_dir, dbs_path)
-        check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
-    
 
 # send mail to user when analysis is done, deprecated in standalone version 
 # Example: send_mail("example@email.com", "/path/to/input_file")
@@ -210,7 +180,8 @@ def get_db_path():
 def get_bin_path():
     # check conda prefix and bin path in conda env
     conda_prefix = os.getenv('CONDA_PREFIX')
-    if conda_prefix:
+    itak_installed = check_package_installed('itak')
+    if conda_prefix and itak_installed:
         bin_path = os.path.join(conda_prefix, 'bin')
         if os.path.exists(bin_path):
             return bin_path
@@ -219,8 +190,9 @@ def get_bin_path():
     if os.path.exists(current_dir_binpath):
         return current_dir_binpath
 
-    # return None if can not find path
-    return None
+    # can not find bin path
+    print(f"Can not find the bin path for hmmer, please re-install iTAK or install hmmer")
+    sys.exit(1)
 
 
 def is_nucleotide(sequence):
@@ -940,6 +912,51 @@ def itak_identify(args, bin_dir, dbs_dir, database_files):
 
         print(report_info)
 
+        # ==== Part X Specific Family Identification ==== 
+        spec_families = check_specific_families(dbs_dir)
+        if args.specific in spec_families:
+            # ==== X1. compare input seq with specific database ====
+            # prepare rules and db   
+            spec_rule = load_rule(os.path.join(dbs_dir, "specific", args.specific + ".txt"))
+            spec_hmm = os.path.join(dbs_dir, "specific", args.specific + ".hmm")
+            spec_ga_cutoff = load_ga_cutoff(tfam_db, correct_ga, spec_hmm)
+
+            if not all(os.path.isfile(f"{spec_hmm}.{ext}") for ext in ["h3f", "h3i", "h3m", "h3p"]):
+                print(f"[WARN]no database file {spec_hmm}")
+                subprocess.call([os.path.join(bin_dir, "hmmpress"), "-f", spec_hmm])
+            else:
+                print(f"Database file {spec_hmm} is ready.")
+
+            # temp file for spec hmmscan result 
+            spec_tmp_hmmscan = os.path.join(temp_dir, args.specific + ".protein_seq.hmmscan.txt")
+
+            spec_hmmscan_command = f"{hmmscan_bin} --acc --notextw --cpu {cpu} -o {spec_tmp_hmmscan} {spec_hmm} {input_protein_f}"
+            # print(hmmscan_command)
+            if os.path.exists(spec_tmp_hmmscan) and os.path.getsize(spec_tmp_hmmscan) > 0:
+                print(f"{args.specific} alignment file exist")
+            else:
+                run_cmd(spec_hmmscan_command)
+            
+            hmmscan_hit_3, hmmscan_detail_3, hmmscan_hit_3b = itakm.parse_hmmscan_result(spec_tmp_hmmscan)
+
+            if not hmmscan_hit_3:
+                report_info = f"  The input sequences are not recognized and classified by rules: {args.specific} \n"
+            else:
+                # Part X2 identification
+                spec_qid_tid = itak_tf_identify(hmmscan_hit_3, hmmscan_detail_3, hmmscan_hit_3b, spec_ga_cutoff, spec_rule)
+                report_info = f"  {len(spec_qid_tid)} of proteins were processed with specific rules: {args.specific} \n"
+
+                # Part X3 save the result
+                spec_output_sequence = f"{output_dir}/{args.specific}_sequence.fasta"
+                spec_output_alignment = f"{output_dir}/{args.specific}_alignment.txt"
+                spec_output_classification = f"{output_dir}/{args.specific}_classification.txt"
+                itak_tf_write_out(spec_qid_tid, seq_info, hmmscan_detail_3, spec_rule, spec_output_sequence, spec_output_alignment, spec_output_classification)
+            print(report_info)
+            
+        else:
+            if args.specific is not None:
+                print(f"Can not find rules and database for {args.specific}")
+
         # ==== Part B PK identification ====
         # ==== B1. get protein kinase seqs ====
         pkinase_id = {}
@@ -964,10 +981,10 @@ def itak_identify(args, bin_dir, dbs_dir, database_files):
                 if os.path.getsize(temp_dir) > 0:
                     os.system(f"rm -rf {temp_dir}")
             
-            if 'z' in options:
-                os.system(f"tar -czf {output_dir}.tgz {output_dir}")
-            if 's' in options:
-                send_mail(options['s'], f)  # Assuming send_mail is a function you have defined elsewhere
+            #if 'z' in options:
+            #    os.system(f"tar -czf {output_dir}.tgz {output_dir}")
+            #if 's' in options:
+            #    send_mail(options['s'], f)  # Assuming send_mail is a function you have defined elsewhere
             # not protein kinase seq, parse next input sequence file
             continue
         
@@ -1096,14 +1113,10 @@ def itak_identify(args, bin_dir, dbs_dir, database_files):
                 os.system(f"rm -rf {temp_dir}")
 
         # code for online version 
-        if args.compress is True:
-            os.system(f"tar -czf {output_dir}.tgz {output_dir}")
-        if args.email is not None:
-            send_mail(args.email, f) 
-
-def specific_identify(args, bin_path, dbs_path):
-    return None
-
+        # if args.compress is True:
+        #    os.system(f"tar -czf {output_dir}.tgz {output_dir}")
+        # if args.email is not None:
+        #    send_mail(args.email, f) 
      
 def main():
 
@@ -1117,7 +1130,7 @@ def main():
         }
     
     # define the url of latest database
-    db_url_latest = "https://github.com/kentnf/iTAK/archive/refs/tags/db-v1.tar.gz"
+    db_url_latest = "https://github.com/kentnf/iTAK/archive/refs/tags/db-v2.tar.gz"
 
     # check whether the os is linux/macos, whether the hmmer and database files exist
     check_os()
@@ -1132,7 +1145,7 @@ def main():
     
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='iTAK -- Plant Transcription factor & Protein Kinase Identifier and Classifier')
-    parser.add_argument('seq_files', nargs='+', help='Input sequence file(s)')
+    parser.add_argument('seq_files', nargs='*' if '-u' in sys.argv or '--update' in sys.argv else '+', help='Input sequence file(s)')
     parser.add_argument('-f', '--frame', help='Translate frame. (3F, 3R, 6; default = 6)', default='6')
     parser.add_argument('-p', '--process', type=int, help='Number of CPUs used for hmmscan. (default = 1)', default=1)
     parser.add_argument('-u', '--update', action='store_true', help='Update the database.')
@@ -1140,24 +1153,19 @@ def main():
     parser.add_argument('-o', '--output', help='Name of the output directory. (default = \'input file name\' + \'_output\')')
     parser.add_argument('-m', '--mode', help='Mode, quick or normal, please do not change it. (default = quick)', default='quick')
     parser.add_argument('-c', '--classify', action='store_true', help='OBSOLETE: Enable protein kinase PPC classification. (default = disable)')
-    parser.add_argument('-z', '--compress', action='store_true', help='Enable the compression of result files. For online version only. (default = disable)')
-    parser.add_argument('-e', '--email', help='E-mail address. iTAK will send email when analysis is done. For online version only.')
+    #parser.add_argument('-z', '--compress', action='store_true', help='Enable the compression of result files. For online version only. (default = disable)')
+    #parser.add_argument('-e', '--email', help='E-mail address. iTAK will send email when analysis is done. For online version only.')
     args = parser.parse_args()
-
-    print(args)
+    print(args) # for debug
 
     # update the database and rules to latest version
     if args.update:
-        print(args.update)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # download and extract database files from temp to dbs path
+            temp_dir = Path(temp_dir)
+            download_and_extract(db_url_latest, temp_dir, dbs_path)
 
-    # identification and classification with user-defined rules and databases
-    elif args.specific is not None:
-        print(args.specific)
-        spec_families = check_specific_families(dbs_path)
-        if args.specific in spec_families:
-            specific_identify(args, bin_path, dbs_path)
-        else:
-            print(f"Can not find rules and database for {args.specific}")
+    # identification and classification
     else:
         itak_identify(args, bin_path, dbs_path, database_files)
 

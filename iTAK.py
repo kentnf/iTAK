@@ -676,9 +676,10 @@ def itak_tf_identify(hmmscan_hit, hmmscan_detail, hmmscan_hit_b, ga_cutoff, tf_r
         hits_s = query_hits_s[qid]['pid'] if qid in query_hits_s else ''
         score_s = query_hits_s[qid]['score'] if qid in query_hits_s else ''
 
-        rule_id = compare_rule(hits, score, hits_s, score_s, tf_rule)
-        if rule_id != 'NA':
-            qid_tid[qid] = rule_id
+        if hits and score and hits_s and score_s:
+            rule_id = compare_rule(hits, score, hits_s, score_s, tf_rule)
+            if rule_id != 'NA':
+                qid_tid[qid] = rule_id
 
     return qid_tid
 

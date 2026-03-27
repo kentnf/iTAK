@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import os
 import platform
 import requests
@@ -10,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from itak.rules import load_rule_records
+
+DEFAULT_DB_ENV_VAR = "ITAK_DB_DIR"
 
 
 @dataclass(frozen=True)
@@ -50,6 +53,12 @@ class AnalysisRequest:
     output: str | None
     mode: str
     classify: bool
+
+
+@dataclass(frozen=True)
+class DatabaseLocation:
+    path: str
+    source: str
 
 
 def check_os():
@@ -115,6 +124,28 @@ def download_and_extract(url, temp_dir, dbs_path):
             shutil.copy2(source_path, target_path)
 
 
+def download_file(url, destination_path):
+    with requests.get(url, stream=True) as response:
+        response.raise_for_status()
+        with open(destination_path, 'wb') as output_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                output_file.write(chunk)
+
+
+def compute_sha256(file_path):
+    sha256 = hashlib.sha256()
+    with open(file_path, 'rb') as file_handle:
+        for chunk in iter(lambda: file_handle.read(1024 * 1024), b''):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+
+def read_expected_sha256(sha256_file):
+    with open(sha256_file) as file_handle:
+        first_line = file_handle.readline().strip()
+    return first_line.split()[0]
+
+
 def check_and_prepare_database(dbs_path, url, database_files, bin_path):
     missing_files = check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
     if len(missing_files) > 0:
@@ -151,19 +182,61 @@ def run_cmd(cmd, debug=False):
 
 
 def get_db_path():
+    location = resolve_database_location()
+    if location is not None:
+        return location.path
+
+    conda_prefix = os.getenv('CONDA_PREFIX')
+    if conda_prefix:
+        db_path = os.path.join(conda_prefix, 'share', 'itak', 'database')
+        return db_path
+
+    print("Can not find the database path, please run iTAK.py to install database")
+
+
+def resolve_database_location():
+    env_db_path = os.getenv(DEFAULT_DB_ENV_VAR)
+    if env_db_path and os.path.exists(env_db_path):
+        return DatabaseLocation(path=env_db_path, source=DEFAULT_DB_ENV_VAR)
+
     current_dir_dbpath = os.path.join(os.getcwd(), 'database')
     if os.path.exists(current_dir_dbpath):
-        return current_dir_dbpath
+        return DatabaseLocation(path=current_dir_dbpath, source="cwd")
 
     conda_prefix = os.getenv('CONDA_PREFIX')
     if conda_prefix:
         db_path = os.path.join(conda_prefix, 'share', 'itak', 'database')
         if os.path.exists(db_path):
-            return db_path
-        os.makedirs(db_path)
-        return db_path
+            return DatabaseLocation(path=db_path, source="conda")
 
-    print("Can not find the database path, please run iTAK.py to install database")
+    return None
+
+
+def resolve_database_target_dir(custom_path=None):
+    if custom_path is not None:
+        return custom_path
+
+    env_db_path = os.getenv(DEFAULT_DB_ENV_VAR)
+    if env_db_path:
+        return env_db_path
+
+    conda_prefix = os.getenv('CONDA_PREFIX')
+    if conda_prefix:
+        return os.path.join(conda_prefix, 'share', 'itak', 'database')
+
+    return os.path.join(Path.home(), '.local', 'share', 'itak', 'database')
+
+
+def find_database_source_dir(extract_root):
+    extract_root = Path(extract_root)
+    candidates = [extract_root]
+    candidates.extend(path for path in extract_root.rglob("database") if path.is_dir())
+
+    for candidate in candidates:
+        if all((candidate / file_name).exists() for file_name in ("TF_Rule.txt", "GA_table.txt", "PK_class_desc.txt")):
+            return candidate
+
+    raise FileNotFoundError("Can not find a database directory in the extracted archive")
 
 
 def file_has_content(path):
@@ -307,13 +380,58 @@ def prepare_runtime_environment(database_files, db_url_latest):
     bin_path = check_hmmer()
     dbs_path = get_db_path()
 
-    check_and_prepare_database(dbs_path, db_url_latest, database_files, bin_path)
+    missing_hmm = check_db_file_exit(dbs_path, database_files, "hmm", bin_path)
+    if len(missing_hmm) > 0:
+        print(f"Can not find database files: {missing_hmm}")
+        print("Run `itak db download` to install the database files.")
+        sys.exit(1)
+
     missing_rule = check_db_file_exit(dbs_path, database_files, "rule", bin_path)
     if len(missing_rule) > 0:
         print(f"Can not find rule file: {missing_rule}")
         sys.exit(1)
 
     return bin_path, dbs_path
+
+
+def verify_database_files(dbs_path, database_files):
+    missing = {}
+    for file_type in ("rule", "hmm"):
+        missing_files = []
+        for file_name in database_files[file_type]:
+            full_path = os.path.join(dbs_path, file_name)
+            if not os.path.exists(full_path):
+                missing_files.append(file_name)
+        if missing_files:
+            missing[file_type] = missing_files
+    return missing
+
+
+def install_database_archive(url, dbs_path, sha256_url=None):
+    target_dir = Path(dbs_path)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as temp_dir_name:
+        temp_dir = Path(temp_dir_name)
+        archive_path = temp_dir / url.split('/')[-1]
+        download_file(url, archive_path)
+
+        if sha256_url is not None:
+            sha256_path = temp_dir / Path(sha256_url).name
+            download_file(sha256_url, sha256_path)
+            expected_sha256 = read_expected_sha256(sha256_path)
+            actual_sha256 = compute_sha256(archive_path)
+            if actual_sha256 != expected_sha256:
+                raise ValueError(f"SHA256 mismatch for {archive_path.name}")
+
+        subprocess.run(['tar', '-xzf', archive_path, '-C', temp_dir], check=True)
+        source_dir = find_database_source_dir(temp_dir)
+        for source_path in source_dir.iterdir():
+            target_path = target_dir / source_path.name
+            if source_path.is_dir():
+                shutil.copytree(source_path, target_path, dirs_exist_ok=True)
+            else:
+                shutil.copy2(source_path, target_path)
 
 
 def build_arg_parser():

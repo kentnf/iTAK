@@ -41,6 +41,12 @@ Download and install the database from GitHub Releases:
 python -m itak db download
 ```
 
+To build the database release asset from this repository checkout:
+
+```bash
+bash scripts/build_db_release.sh db-v1
+```
+
 Install into a custom location:
 
 ```bash

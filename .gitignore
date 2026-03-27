@@ -3,3 +3,6 @@
 /database/*
 !/database/db.txt
 /__pycache__/
+/build/
+/dist/
+/*.egg-info/

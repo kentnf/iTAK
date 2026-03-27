@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "itak"
+version = "2.0.2"
+description = "Plant transcription factor, transcriptional regulator, and protein kinase identifier and classifier"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "kentnf" }
+]
+dependencies = [
+  "biopython>=1.86",
+  "requests>=2.31.0",
+]
+keywords = ["bioinformatics", "plants", "hmmer", "transcription-factors", "kinase"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.scripts]
+itak = "itak.cli:main"
+iTAK = "itak.cli:main"
+
+[tool.setuptools]
+packages = ["itak"]
+py-modules = [
+  "iTAK",
+  "itakm",
+  "itak_cli",
+  "itak_pipeline",
+  "itak_runtime",
+  "itak_rules",
+  "itak_sequences",
+  "itak_classify",
+]

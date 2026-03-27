@@ -19,6 +19,20 @@ conda install -c bioconda itak
 
 Ensure you have Conda installed and set up before running the installation command. For more detailed installation instructions, including setting up Conda, please refer to the [Bioconda documentation](https://bioconda.github.io/).
 
+For running from this source checkout, you can either install dependencies directly:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Or install the package in editable mode:
+
+```bash
+python -m pip install -e .
+```
+
+You also need HMMER available on your `PATH`.
+
 ## Usage
 
 After installation, iTAK can be run from the command line. Here's a basic example to get you started:
@@ -26,6 +40,34 @@ After installation, iTAK can be run from the command line. Here's a basic exampl
 ```bash
 iTAK.py <sequence_file>
 ```
+
+From a source checkout, you can run:
+
+```bash
+python iTAK.py <sequence_file>
+```
+
+You can also use the package-style entry point from the repository root:
+
+```bash
+python -m itak <sequence_file>
+```
+
+After `pip install -e .`, you can run:
+
+```bash
+itak <sequence_file>
+```
+
+## Testing
+
+Run the validation commands from the repository root:
+
+```bash
+bash scripts/validate.sh
+```
+
+The smoke test is included in `unittest` discovery and skips automatically when `hmmscan` is not available on `PATH`.
 
 ## Documentation
 

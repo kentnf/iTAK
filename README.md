@@ -19,7 +19,15 @@ conda install -c bioconda itak
 
 Ensure you have Conda installed and set up before running the installation command. For more detailed installation instructions, including setting up Conda, please refer to the [Bioconda documentation](https://bioconda.github.io/).
 
-For running from this source checkout, you can either install dependencies directly:
+For local development, prefer managing the environment with pixi:
+
+```bash
+pixi run validate
+```
+
+This project expects external tools such as HMMER to be provided by the environment and does not rely on shipping repository-local binaries.
+
+If you prefer not to use pixi, you can still install Python dependencies directly:
 
 ```bash
 python -m pip install -r requirements.txt
@@ -59,12 +67,24 @@ After `pip install -e .`, you can run:
 itak <sequence_file>
 ```
 
+With pixi, you can run:
+
+```bash
+pixi run itak -- <sequence_file>
+```
+
 ## Testing
 
 Run the validation commands from the repository root:
 
 ```bash
 bash scripts/validate.sh
+```
+
+Or through pixi:
+
+```bash
+pixi run validate
 ```
 
 The smoke test is included in `unittest` discovery and skips automatically when `hmmscan` is not available on `PATH`.

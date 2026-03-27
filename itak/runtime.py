@@ -151,6 +151,10 @@ def run_cmd(cmd, debug=False):
 
 
 def get_db_path():
+    current_dir_dbpath = os.path.join(os.getcwd(), 'database')
+    if os.path.exists(current_dir_dbpath):
+        return current_dir_dbpath
+
     conda_prefix = os.getenv('CONDA_PREFIX')
     if conda_prefix:
         db_path = os.path.join(conda_prefix, 'share', 'itak', 'database')
@@ -158,10 +162,6 @@ def get_db_path():
             return db_path
         os.makedirs(db_path)
         return db_path
-
-    current_dir_dbpath = os.path.join(os.getcwd(), 'database')
-    if os.path.exists(current_dir_dbpath):
-        return current_dir_dbpath
 
     print("Can not find the database path, please run iTAK.py to install database")
 

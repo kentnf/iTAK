@@ -10,7 +10,7 @@ from itak.pipeline import itak_identify
 from itak.runtime import install_database_archive, prepare_runtime_environment, resolve_database_location, resolve_database_target_dir, verify_database_files
 
 
-version = '2.0.3'
+version = '2.0.4'
 db_version = '2.1'
 debug = False
 

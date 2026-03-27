@@ -2,6 +2,8 @@
 
 Use the recipe in `bioconda/recipe/meta.yaml` as the submission base for `bioconda-recipes`.
 
+The step-by-step submission checklist and a ready-to-paste PR body are in `bioconda/SUBMISSION.md`.
+
 Recommended distribution split:
 
 - Conda package: Python code plus runtime dependency on `hmmer`

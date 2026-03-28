@@ -8,7 +8,7 @@ from itak.sequences import translate_frames
 
 class ITAKPackageTests(unittest.TestCase):
     def test_package_exposes_version_metadata(self):
-        self.assertEqual(itak.__version__, "2.0.4")
+        self.assertEqual(itak.__version__, "2.0.5")
         self.assertTrue(callable(translate_frames))
         self.assertTrue(callable(build_analysis_request))
 

@@ -2,9 +2,9 @@
 
 Current upstream code release:
 
-- version: `2.0.4`
-- source tarball: `https://github.com/kentnf/iTAK/archive/refs/tags/v2.0.4.tar.gz`
-- source sha256: `94d92caa1195c085c83f3ff114a1891cee1bf9d6f671f6736167af9ca3c2a2f9`
+- version: `2.0.5`
+- source tarball: `https://github.com/kentnf/iTAK/archive/refs/tags/v2.0.5.tar.gz`
+- source sha256: `916e30535fd26d99fc852a758fdc45739c3e4e7510e5db1c58fe5851af396282`
 
 Current external database release:
 
@@ -28,12 +28,12 @@ Recipe files in this repository:
 
 ## Suggested PR Title
 
-`Add iTAK 2.0.4`
+`Add iTAK 2.0.5`
 
 ## Suggested PR Body
 
 ```text
-This PR adds iTAK 2.0.4 to Bioconda.
+This PR adds iTAK 2.0.5 to Bioconda.
 
 Highlights:
 - Python package with the `itak` console entry point

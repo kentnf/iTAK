@@ -3,7 +3,7 @@ import textwrap
 import unittest
 from pathlib import Path
 
-import itakm
+import itak.hmmscan as hmmscan
 
 
 class ITAKMParserTests(unittest.TestCase):
@@ -19,7 +19,7 @@ class ITAKMParserTests(unittest.TestCase):
             """
         )
 
-        alignments = itakm.parse_align_records(hsp_info, "gene1", "448")
+        alignments = hmmscan.parse_align_records(hsp_info, "gene1", "448")
 
         self.assertEqual(len(alignments), 1)
         alignment = alignments[0]
@@ -54,7 +54,7 @@ class ITAKMParserTests(unittest.TestCase):
             result_path = Path(temp_dir) / "hmmscan.txt"
             result_path.write_text(hmmscan_text)
 
-            parse_result = itakm.parse_hmmscan_records(result_path)
+            parse_result = hmmscan.parse_hmmscan_records(result_path)
             legacy_summary, legacy_alignment, legacy_best = parse_result.to_legacy_tuple()
 
         self.assertEqual(len(parse_result.summary_hits), 1)
@@ -83,7 +83,7 @@ class ITAKMParserTests(unittest.TestCase):
             result_path = Path(temp_dir) / "hmmscan.txt"
             result_path.write_text(hmmscan_text)
 
-            parse_result = itakm.parse_hmmscan_records(result_path)
+            parse_result = hmmscan.parse_hmmscan_records(result_path)
 
         self.assertEqual(parse_result.summary_hits, [])
         self.assertEqual(parse_result.alignments, [])

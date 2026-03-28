@@ -1,16 +1,16 @@
 import importlib
 import unittest
 
-import iTAK
 import itak
+from itak.runtime import build_analysis_request
+from itak.sequences import translate_frames
 
 
 class ITAKPackageTests(unittest.TestCase):
-    def test_package_reexports_compatibility_api(self):
-        self.assertEqual(itak.version, iTAK.version)
-        self.assertEqual(itak.db_version, iTAK.db_version)
-        self.assertIs(itak.translate_frames, iTAK.translate_frames)
-        self.assertIs(itak.build_analysis_request, iTAK.build_analysis_request)
+    def test_package_exposes_version_metadata(self):
+        self.assertEqual(itak.__version__, "2.0.4")
+        self.assertTrue(callable(translate_frames))
+        self.assertTrue(callable(build_analysis_request))
 
     def test_package_main_module_exposes_main(self):
         main_module = importlib.import_module("itak.__main__")

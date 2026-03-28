@@ -30,17 +30,6 @@ classifiers = [
 
 [project.scripts]
 itak = "itak.cli:main"
-iTAK = "itak.cli:main"
 
 [tool.setuptools]
 packages = ["itak"]
-py-modules = [
-  "iTAK",
-  "itakm",
-  "itak_cli",
-  "itak_pipeline",
-  "itak_runtime",
-  "itak_rules",
-  "itak_sequences",
-  "itak_classify",
-]

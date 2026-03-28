@@ -21,7 +21,6 @@ class ITAKSmokeTest(unittest.TestCase):
 
     def test_cli_matches_expected_fixture_output(self):
         repo_root = Path(__file__).resolve().parents[1]
-        script_path = repo_root / "iTAK.py"
         fixture_input_path = repo_root / "test_seq"
         expected_dir = repo_root / "test_seq_output"
 
@@ -47,7 +46,7 @@ class ITAKSmokeTest(unittest.TestCase):
 
             try:
                 subprocess.run(
-                    [sys.executable, str(script_path), str(input_path), "-o", str(output_dir)],
+                    [sys.executable, "-m", "itak", str(input_path), "-o", str(output_dir)],
                     cwd=repo_root,
                     check=True,
                 )

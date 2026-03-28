@@ -4,8 +4,11 @@ from pathlib import Path
 
 from Bio.Seq import Seq
 
-import iTAK
-import itakm
+from itak.classify import aln_to_hash, identify_protein_kinases, itak_pk_classify
+from itak.hmmscan import HmmscanAlignment, HmmscanSummaryHit
+from itak.rules import build_domain_hit_collection, compare_array, compare_rule, load_rule_records
+from itak.runtime import resolve_output_dir
+from itak.sequences import six_frame_translation, translate_frames, translate_three_frames
 
 
 class ITAKHelperTests(unittest.TestCase):
@@ -13,52 +16,52 @@ class ITAKHelperTests(unittest.TestCase):
         sequence = Seq("ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG")
 
         self.assertEqual(
-            [str(frame) for frame in iTAK.translate_frames(sequence, "6")],
-            [str(frame) for frame in iTAK.six_frame_translation(sequence)],
+            [str(frame) for frame in translate_frames(sequence, "6")],
+            [str(frame) for frame in six_frame_translation(sequence)],
         )
         self.assertEqual(
-            [str(frame) for frame in iTAK.translate_frames(sequence, "3F")],
-            [str(frame) for frame in iTAK.translate_three_frames(sequence)],
+            [str(frame) for frame in translate_frames(sequence, "3F")],
+            [str(frame) for frame in translate_three_frames(sequence)],
         )
         self.assertEqual(
-            [str(frame) for frame in iTAK.translate_frames(sequence, "3R")],
-            [str(frame) for frame in iTAK.translate_three_frames(sequence.reverse_complement())],
+            [str(frame) for frame in translate_frames(sequence, "3R")],
+            [str(frame) for frame in translate_three_frames(sequence.reverse_complement())],
         )
 
     def test_resolve_output_dir_keeps_multi_input_outputs_separate(self):
         self.assertEqual(
-            iTAK.resolve_output_dir("input_a.fa", "/tmp/out", True),
+            resolve_output_dir("input_a.fa", "/tmp/out", True),
             "/tmp/out/input_a.fa_output",
         )
         self.assertEqual(
-            iTAK.resolve_output_dir("input_a.fa", "/tmp/out", False),
+            resolve_output_dir("input_a.fa", "/tmp/out", False),
             "/tmp/out",
         )
 
     def test_identify_protein_kinases_applies_ga_cutoffs(self):
         hmmscan_hit = [
-            itakm.HmmscanSummaryHit("gene1", "PF00069.29", "120.0", "1e-40"),
-            itakm.HmmscanSummaryHit("gene2", "PF07714.21", "95.0", "1e-25"),
-            itakm.HmmscanSummaryHit("gene3", "PF00069.29", "10.0", "1e-3"),
-            itakm.HmmscanSummaryHit("gene4", "PF99999.1", "200.0", "1e-60"),
+            HmmscanSummaryHit("gene1", "PF00069.29", "120.0", "1e-40"),
+            HmmscanSummaryHit("gene2", "PF07714.21", "95.0", "1e-25"),
+            HmmscanSummaryHit("gene3", "PF00069.29", "10.0", "1e-3"),
+            HmmscanSummaryHit("gene4", "PF99999.1", "200.0", "1e-60"),
         ]
         ga_cutoff = {"PF00069": 50.0, "PF07714": 90.0}
 
         self.assertEqual(
-            iTAK.identify_protein_kinases(hmmscan_hit, ga_cutoff),
+            identify_protein_kinases(hmmscan_hit, ga_cutoff),
             {"gene1": 1, "gene2": 1},
         )
 
     def test_identify_protein_kinases_requires_ga_for_kinase_domain(self):
         with self.assertRaises(Exception):
-            iTAK.identify_protein_kinases(
-                [itakm.HmmscanSummaryHit("gene1", "PF00069.29", "120.0", "1e-40")],
+            identify_protein_kinases(
+                [HmmscanSummaryHit("gene1", "PF00069.29", "120.0", "1e-40")],
                 {},
             )
 
     def test_aln_to_hash_accepts_structured_alignments(self):
         alignments = [
-            itakm.HmmscanAlignment(
+            HmmscanAlignment(
                 query_name="gene1",
                 hit_id="PF00069.29",
                 query_start="19",
@@ -76,19 +79,19 @@ class ITAKHelperTests(unittest.TestCase):
         ]
 
         self.assertEqual(
-            iTAK.aln_to_hash(alignments, {"PF00069": 100.0}),
+            aln_to_hash(alignments, {"PF00069": 100.0}),
             {
                 "gene1": "gene1\tPF00069.29\t19\t274\t1\t263\t274\t\t263\t247.2\t1.2e-75\tProtein kinase domain\t448\n"
             },
         )
 
     def test_compare_array_uses_highest_scores_for_required_duplicates(self):
-        collection = iTAK.build_domain_hit_collection(
+        collection = build_domain_hit_collection(
             ["PF1", "PF1", "PF1", "PF2"],
             [10.0, 50.0, 20.0, 5.0],
         )
 
-        match_status, match_score = iTAK.compare_array(collection, ["PF1", "PF1"])
+        match_status, match_score = compare_array(collection, ["PF1", "PF1"])
 
         self.assertEqual(match_status, 2)
         self.assertEqual(match_score, 70.0)
@@ -124,16 +127,16 @@ class ITAKHelperTests(unittest.TestCase):
             },
         }
 
-        hits = iTAK.build_domain_hit_collection(["PF1", "PF2", "PFX"], [10.0, 20.0, 30.0])
-        best_hits = iTAK.build_domain_hit_collection(["PF1", "PF2"], [10.0, 20.0])
-        self.assertEqual(iTAK.compare_rule(hits, None, best_hits, None, rule_pack), "T0001")
+        hits = build_domain_hit_collection(["PF1", "PF2", "PFX"], [10.0, 20.0, 30.0])
+        best_hits = build_domain_hit_collection(["PF1", "PF2"], [10.0, 20.0])
+        self.assertEqual(compare_rule(hits, None, best_hits, None, rule_pack), "T0001")
 
-        stronger_hits = iTAK.build_domain_hit_collection(["PF1"], [99.0])
-        self.assertEqual(iTAK.compare_rule(stronger_hits, None, stronger_hits, None, {"T9999": rule_pack["T9999"]}), "T9999")
+        stronger_hits = build_domain_hit_collection(["PF1"], [99.0])
+        self.assertEqual(compare_rule(stronger_hits, None, stronger_hits, None, {"T9999": rule_pack["T9999"]}), "T9999")
 
     def test_itak_pk_classify_accepts_structured_alignments(self):
         alignments = [
-            itakm.HmmscanAlignment(
+            HmmscanAlignment(
                 query_name="gene1",
                 hit_id="PK_A",
                 query_start="1",
@@ -148,7 +151,7 @@ class ITAKHelperTests(unittest.TestCase):
                 description="desc",
                 query_length="100",
             ),
-            itakm.HmmscanAlignment(
+            HmmscanAlignment(
                 query_name="gene1",
                 hit_id="PK_B",
                 query_start="1",
@@ -165,7 +168,7 @@ class ITAKHelperTests(unittest.TestCase):
             ),
         ]
 
-        hit, best_align = iTAK.itak_pk_classify(alignments, {"gene1": 1, "gene2": 1}, "Group-other")
+        hit, best_align = itak_pk_classify(alignments, {"gene1": 1, "gene2": 1}, "Group-other")
 
         self.assertEqual(hit, {"gene1": "PK_B", "gene2": "Group-other"})
         self.assertEqual(
@@ -191,7 +194,7 @@ Desc:demo
             rule_path = Path(temp_dir) / "rule.txt"
             rule_path.write_text(rule_text)
 
-            records = iTAK.load_rule_records(rule_path)
+            records = load_rule_records(rule_path)
 
         self.assertEqual(set(records.keys()), {"T0001"})
         self.assertEqual(records["T0001"].name, "TestRule")

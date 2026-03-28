@@ -48,7 +48,6 @@ class AnalysisRequest:
     seq_files: tuple[str, ...]
     frame: str
     process: int
-    update: bool
     specific: str | None
     output: str | None
     mode: str
@@ -104,26 +103,6 @@ def check_db_file_exit(db_path, database_files, ftype, bin_path):
     return missing_files
 
 
-def download_and_extract(url, temp_dir, dbs_path):
-    local_filename = url.split('/')[-1]
-    with requests.get(url, stream=True) as response:
-        response.raise_for_status()
-        with open(temp_dir / local_filename, 'wb') as output_file:
-            for chunk in response.iter_content(chunk_size=8192):
-                output_file.write(chunk)
-
-    subprocess.run(['tar', '-xzf', temp_dir / local_filename, '-C', temp_dir], check=True)
-    source_dir = temp_dir / "iTAK-db-v1" / "database"
-    dbs_path = Path(dbs_path)
-    dbs_path.mkdir(parents=True, exist_ok=True)
-    for source_path in source_dir.iterdir():
-        target_path = dbs_path / source_path.name
-        if source_path.is_dir():
-            shutil.copytree(source_path, target_path, dirs_exist_ok=True)
-        else:
-            shutil.copy2(source_path, target_path)
-
-
 def download_file(url, destination_path):
     with requests.get(url, stream=True) as response:
         response.raise_for_status()
@@ -144,15 +123,6 @@ def read_expected_sha256(sha256_file):
     with open(sha256_file) as file_handle:
         first_line = file_handle.readline().strip()
     return first_line.split()[0]
-
-
-def check_and_prepare_database(dbs_path, url, database_files, bin_path):
-    missing_files = check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
-    if len(missing_files) > 0:
-        with tempfile.TemporaryDirectory() as temp_dir_name:
-            temp_dir = Path(temp_dir_name)
-            download_and_extract(url, temp_dir, dbs_path)
-            check_db_file_exit(dbs_path, database_files, 'hmm', bin_path)
 
 
 def check_specific_families(dbs_path):
@@ -186,12 +156,10 @@ def get_db_path():
     if location is not None:
         return location.path
 
-    conda_prefix = os.getenv('CONDA_PREFIX')
-    if conda_prefix:
-        db_path = os.path.join(conda_prefix, 'share', 'itak', 'database')
-        return db_path
-
-    print("Can not find the database path, please run iTAK.py to install database")
+    raise FileNotFoundError(
+        "Can not find the database path. Run `itak db download` to install the database files "
+        f"or set {DEFAULT_DB_ENV_VAR}."
+    )
 
 
 def resolve_database_location():
@@ -311,7 +279,6 @@ def build_analysis_request(args):
         seq_files=tuple(getattr(args, "seq_files", ()) or ()),
         frame=getattr(args, "frame", "6"),
         process=getattr(args, "process", 1),
-        update=bool(getattr(args, "update", False)),
         specific=getattr(args, "specific", None),
         output=getattr(args, "output", None),
         mode=getattr(args, "mode", "quick"),
@@ -375,10 +342,14 @@ def ensure_sample_dirs(paths):
     os.makedirs(paths.output_dir, exist_ok=True)
 
 
-def prepare_runtime_environment(database_files, db_url_latest):
+def prepare_runtime_environment(database_files):
     check_os()
     bin_path = check_hmmer()
-    dbs_path = get_db_path()
+    try:
+        dbs_path = get_db_path()
+    except FileNotFoundError as exc:
+        print(exc)
+        sys.exit(1)
 
     missing_hmm = check_db_file_exit(dbs_path, database_files, "hmm", bin_path)
     if len(missing_hmm) > 0:
@@ -436,10 +407,9 @@ def install_database_archive(url, dbs_path, sha256_url=None):
 
 def build_arg_parser():
     parser = argparse.ArgumentParser(description='iTAK -- Plant Transcription factor & Protein Kinase Identifier and Classifier')
-    parser.add_argument('seq_files', nargs='*' if '-u' in sys.argv or '--update' in sys.argv else '+', help='Input sequence file(s)')
+    parser.add_argument('seq_files', nargs='+', help='Input sequence file(s)')
     parser.add_argument('-f', '--frame', help='Translate frame. (3F, 3R, 6; default = 6)', default='6')
     parser.add_argument('-p', '--process', type=int, help='Number of CPUs used for hmmscan. (default = 1)', default=1)
-    parser.add_argument('-u', '--update', action='store_true', help='Update the database.')
     parser.add_argument('-s', '--specific', help='User-defined specific family name for identification and classification')
     parser.add_argument('-o', '--output', help='Name of the output directory. (default = \'input file name\' + \'_output\')')
     parser.add_argument('-m', '--mode', help='Mode, quick or normal, please do not change it. (default = quick)', default='quick')

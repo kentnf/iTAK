@@ -2,15 +2,14 @@ import argparse
 import os
 import smtplib
 import sys
-import tempfile
 from email.mime.text import MIMEText
-from pathlib import Path
 
+from itak import __version__
 from itak.pipeline import itak_identify
 from itak.runtime import install_database_archive, prepare_runtime_environment, resolve_database_location, resolve_database_target_dir, verify_database_files
 
 
-version = '2.0.4'
+version = __version__
 db_version = '2.1'
 debug = False
 
@@ -51,13 +50,8 @@ def send_mail(address, input_file):
 
 
 def run_cli(args):
-    bin_path, dbs_path = prepare_runtime_environment(DATABASE_FILES, DB_URL_LATEST)
-
-    if args.update:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            install_database_archive(DB_URL_LATEST, dbs_path, sha256_url=None)
-    else:
-        itak_identify(args, bin_path, dbs_path, debug=debug)
+    bin_path, dbs_path = prepare_runtime_environment(DATABASE_FILES)
+    itak_identify(args, bin_path, dbs_path, debug=debug)
 
 
 def build_db_parser():

@@ -1,130 +1,114 @@
 # iTAK v2
 
-iTAK identifies and classifies plant transcription factors (TFs), transcriptional regulators (TRs), and protein kinases (PKs) from genome or transcriptome sequence data. The current codebase is the Python rewrite of the original Perl implementation.
+iTAK identifies and classifies plant transcription factors (TFs), transcriptional regulators (TRs), and protein kinases (PKs) from genome or transcriptome sequence data.
 
-## Installation
+## Recommended: pixi
 
-For local development, prefer `pixi` so Python dependencies and HMMER are managed together:
+This is the simplest way to run iTAK from this repository because `pixi` manages both Python dependencies and HMMER.
+
+### 1. Install dependencies
 
 ```bash
 pixi install
-pixi run validate
 ```
 
-If you do not want to use `pixi`, install the package and runtime dependencies yourself:
+### 2. Download the database
+
+```bash
+pixi run itak -- db download
+```
+
+### 3. Run iTAK
+
+```bash
+pixi run itak -- <sequence_file>
+```
+
+Example:
+
+```bash
+pixi run itak -- test_seq
+```
+
+## Alternative: local pip install
+
+Use this only if you do not want to use `pixi`.
+
+Requirements:
+
+- Python 3.10+
+- `hmmscan` from HMMER available on `PATH`
+
+Install:
 
 ```bash
 python -m pip install -e .
 ```
 
-iTAK expects `hmmscan` from HMMER to be available on `PATH`.
+Download the database:
 
-## Database Management
+```bash
+itak db download
+```
 
-The iTAK database is no longer bundled into the Python package. This keeps the package small enough for package managers such as Bioconda and makes database updates independent from code releases.
+Run:
+
+```bash
+itak <sequence_file>
+```
+
+## Conda / Bioconda
+
+Planned, but not available yet.
+
+The Bioconda recipe has been prepared, but it has not been accepted upstream yet. Do not use the commands below until the Bioconda package is actually published.
+
+Planned install command:
+
+```bash
+conda install -c bioconda itak
+```
+
+Planned usage:
+
+```bash
+itak db download
+itak <sequence_file>
+```
+
+## Database Location
 
 Inspect the current database location:
 
 ```bash
-python -m itak db path
+itak db path
 ```
 
 Inspect the default install target:
 
 ```bash
-python -m itak db path --target
+itak db path --target
 ```
 
-Download and install the database from GitHub Releases:
+Use a custom database location:
 
 ```bash
-python -m itak db download
+itak db download --path /path/to/itak-db
+ITAK_DB_DIR=/path/to/itak-db itak <sequence_file>
 ```
 
-To build the database release asset from this repository checkout:
+Verify database files:
 
 ```bash
-bash scripts/build_db_release.sh db-v1
+itak db verify
 ```
 
-Install into a custom location:
-
-```bash
-python -m itak db download --path /path/to/itak-db
-```
-
-Verify the required database files:
-
-```bash
-python -m itak db verify
-```
-
-To force a custom database location at runtime, set `ITAK_DB_DIR`.
-
-## Usage
-
-Run the classic script entry point:
-
-```bash
-python iTAK.py <sequence_file>
-```
-
-Run the package entry point:
-
-```bash
-python -m itak <sequence_file>
-```
-
-After installation, the console scripts are also available:
-
-```bash
-itak <sequence_file>
-iTAK <sequence_file>
-```
-
-With `pixi`:
-
-```bash
-pixi run itak -- <sequence_file>
-pixi run itak -- db download
-```
-
-## Testing
-
-Run the validation suite from the repository root:
-
-```bash
-bash scripts/validate.sh
-```
-
-Or through `pixi`:
+## Validation
 
 ```bash
 pixi run validate
 ```
 
-The smoke test is included in `unittest` discovery and skips automatically when `hmmscan` is not available on `PATH`.
-
-## Bioconda Packaging
-
-The recommended distribution split is:
-
-- Bioconda package: Python code plus runtime dependency on HMMER.
-- GitHub Releases: database archive and optional checksum files.
-- User post-install step: `itak db download`.
-
-A starter Bioconda recipe template is included under `bioconda/recipe/`.
-
 ## Documentation
 
-For more information on installation, usage, and customization, see the [iTAK wiki](https://github.com/kentnf/iTAK/wiki).
-
-## Support
-
-Open an issue on the [GitHub repository](https://github.com/kentnf/iTAK/issues) if you hit a bug or packaging problem.
-
-## Citation
-
-If you use iTAK in your research, please cite:
-
-[Zheng Y, Jiao C, Sun H, Rosli HG, Pombo MA, Zhang P, Banf M, Dai X, Martin GB, Giovannoni JJ, Zhao PX, Rhee SY, Fei Z, "iTAK: a program for genome-wide prediction and classification of plant transcription factors, transcriptional regulators, and protein kinases," Molecular Plant, 2016.](https://www.sciencedirect.com/science/article/pii/S1674205216302234)
+More details are available in the [wiki](https://github.com/kentnf/iTAK/wiki).

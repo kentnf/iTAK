@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import itak_runtime
+import itak.runtime as itak_runtime
 
 
 class ITAKRuntimeTests(unittest.TestCase):
@@ -16,7 +16,6 @@ class ITAKRuntimeTests(unittest.TestCase):
             seq_files=["a.fa", "b.fa"],
             frame="3R",
             process=4,
-            update=True,
             specific="NAC",
             output="/tmp/out",
             mode="normal",
@@ -28,7 +27,6 @@ class ITAKRuntimeTests(unittest.TestCase):
         self.assertEqual(request.seq_files, ("a.fa", "b.fa"))
         self.assertEqual(request.frame, "3R")
         self.assertEqual(request.process, 4)
-        self.assertTrue(request.update)
         self.assertEqual(request.specific, "NAC")
         self.assertEqual(request.output, "/tmp/out")
         self.assertEqual(request.mode, "normal")
@@ -39,7 +37,6 @@ class ITAKRuntimeTests(unittest.TestCase):
             seq_files=("a.fa",),
             frame="6",
             process=1,
-            update=False,
             specific=None,
             output=None,
             mode="quick",
@@ -56,7 +53,6 @@ class ITAKRuntimeTests(unittest.TestCase):
         self.assertEqual(request.seq_files, ("a.fa",))
         self.assertEqual(request.frame, "6")
         self.assertEqual(request.process, 1)
-        self.assertFalse(request.update)
         self.assertIsNone(request.specific)
         self.assertIsNone(request.output)
         self.assertEqual(request.mode, "quick")

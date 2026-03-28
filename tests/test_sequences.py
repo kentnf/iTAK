@@ -5,7 +5,7 @@ from pathlib import Path
 from Bio import SeqIO
 from Bio.Seq import Seq
 
-import itak_sequences
+import itak.sequences as itak_sequences
 
 
 class ITAKSequenceTests(unittest.TestCase):

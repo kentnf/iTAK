@@ -8,6 +8,10 @@ import itak.cli as itak_cli
 
 
 class ITAKCliTests(unittest.TestCase):
+    def test_normalize_argv_strips_leading_separator(self):
+        self.assertEqual(itak_cli.normalize_argv(["--", "db", "path"]), ["db", "path"])
+        self.assertEqual(itak_cli.normalize_argv(["test_seq"]), ["test_seq"])
+
     def test_main_parses_args_before_runtime_setup(self):
         parser = mock.Mock()
         parser.parse_args.side_effect = SystemExit(0)
@@ -18,6 +22,18 @@ class ITAKCliTests(unittest.TestCase):
                 itak_cli.main()
 
         prepare_runtime_environment.assert_not_called()
+
+    def test_main_accepts_leading_separator_for_db_commands(self):
+        args = argparse.Namespace(db_command="path", target=True)
+
+        with mock.patch.object(itak_cli, "build_db_parser") as build_db_parser, \
+             mock.patch.object(itak_cli, "run_db_cli") as run_db_cli, \
+             mock.patch("itak.cli.sys.argv", ["itak", "--", "db", "path", "--target"]):
+            build_db_parser.return_value.parse_args.return_value = args
+            itak_cli.main()
+
+        build_db_parser.return_value.parse_args.assert_called_once_with(["path", "--target"])
+        run_db_cli.assert_called_once_with(args)
 
     def test_run_cli_dispatches_identify_path(self):
         args = argparse.Namespace()

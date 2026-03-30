@@ -6,6 +6,7 @@ import requests
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +14,7 @@ from pathlib import Path
 from itak.rules import load_rule_records
 
 DEFAULT_DB_ENV_VAR = "ITAK_DB_DIR"
+DATABASE_MARKER_FILES = ("TF_Rule.txt", "GA_table.txt", "PK_class_desc.txt")
 
 
 @dataclass(frozen=True)
@@ -162,20 +164,38 @@ def get_db_path():
     )
 
 
-def resolve_database_location():
+def get_user_database_dir():
+    return os.path.join(Path.home(), '.local', 'share', 'itak', 'database')
+
+
+def is_database_dir(db_path):
+    candidate = Path(db_path)
+    return candidate.is_dir() and all((candidate / file_name).exists() for file_name in DATABASE_MARKER_FILES)
+
+
+def iter_database_candidates():
     env_db_path = os.getenv(DEFAULT_DB_ENV_VAR)
-    if env_db_path and os.path.exists(env_db_path):
-        return DatabaseLocation(path=env_db_path, source=DEFAULT_DB_ENV_VAR)
+    if env_db_path:
+        yield DatabaseLocation(path=env_db_path, source=DEFAULT_DB_ENV_VAR)
 
     current_dir_dbpath = os.path.join(os.getcwd(), 'database')
-    if os.path.exists(current_dir_dbpath):
-        return DatabaseLocation(path=current_dir_dbpath, source="cwd")
+    if is_database_dir(current_dir_dbpath):
+        yield DatabaseLocation(path=current_dir_dbpath, source="cwd")
 
     conda_prefix = os.getenv('CONDA_PREFIX')
     if conda_prefix:
-        db_path = os.path.join(conda_prefix, 'share', 'itak', 'database')
-        if os.path.exists(db_path):
-            return DatabaseLocation(path=db_path, source="conda")
+        yield DatabaseLocation(
+            path=os.path.join(conda_prefix, 'share', 'itak', 'database'),
+            source="conda",
+        )
+
+    yield DatabaseLocation(path=get_user_database_dir(), source="user")
+
+
+def resolve_database_location():
+    for location in iter_database_candidates():
+        if os.path.exists(location.path):
+            return location
 
     return None
 
@@ -184,15 +204,7 @@ def resolve_database_target_dir(custom_path=None):
     if custom_path is not None:
         return custom_path
 
-    env_db_path = os.getenv(DEFAULT_DB_ENV_VAR)
-    if env_db_path:
-        return env_db_path
-
-    conda_prefix = os.getenv('CONDA_PREFIX')
-    if conda_prefix:
-        return os.path.join(conda_prefix, 'share', 'itak', 'database')
-
-    return os.path.join(Path.home(), '.local', 'share', 'itak', 'database')
+    return next(iter_database_candidates()).path
 
 
 def find_database_source_dir(extract_root):
@@ -201,10 +213,25 @@ def find_database_source_dir(extract_root):
     candidates.extend(path for path in extract_root.rglob("database") if path.is_dir())
 
     for candidate in candidates:
-        if all((candidate / file_name).exists() for file_name in ("TF_Rule.txt", "GA_table.txt", "PK_class_desc.txt")):
+        if all((candidate / file_name).exists() for file_name in DATABASE_MARKER_FILES):
             return candidate
 
     raise FileNotFoundError("Can not find a database directory in the extracted archive")
+
+
+def extract_archive(archive_path, destination_dir):
+    destination_root = Path(destination_dir).resolve()
+
+    with tarfile.open(archive_path, "r:gz") as archive_handle:
+        for member in archive_handle.getmembers():
+            if member.issym() or member.islnk():
+                raise ValueError(f"Archive member is not supported: {member.name}")
+
+            member_path = (destination_root / member.name).resolve()
+            if os.path.commonpath([str(destination_root), str(member_path)]) != str(destination_root):
+                raise ValueError(f"Archive member escapes destination directory: {member.name}")
+
+        archive_handle.extractall(destination_root)
 
 
 def file_has_content(path):
@@ -395,7 +422,7 @@ def install_database_archive(url, dbs_path, sha256_url=None):
             if actual_sha256 != expected_sha256:
                 raise ValueError(f"SHA256 mismatch for {archive_path.name}")
 
-        subprocess.run(['tar', '-xzf', archive_path, '-C', temp_dir], check=True)
+        extract_archive(archive_path, temp_dir)
         source_dir = find_database_source_dir(temp_dir)
         for source_path in source_dir.iterdir():
             target_path = target_dir / source_path.name

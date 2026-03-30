@@ -103,6 +103,13 @@ Verify database files:
 itak db verify
 ```
 
+Default lookup/install behavior:
+
+- `ITAK_DB_DIR` if set
+- `./database` only when it already contains a valid iTAK database
+- `CONDA_PREFIX/share/itak/database` for `pixi`/conda-style environments
+- `~/.local/share/itak/database` for user installs
+
 ## Validation
 
 ```bash

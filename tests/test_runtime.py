@@ -63,12 +63,60 @@ class ITAKRuntimeTests(unittest.TestCase):
             extract_root = Path(temp_dir)
             database_dir = extract_root / "custom-root" / "payload" / "database"
             database_dir.mkdir(parents=True)
-            for file_name in ("TF_Rule.txt", "GA_table.txt", "PK_class_desc.txt"):
+            for file_name in itak_runtime.DATABASE_MARKER_FILES:
                 (database_dir / file_name).write_text("ok\n")
 
             resolved = itak_runtime.find_database_source_dir(extract_root)
 
         self.assertEqual(resolved, database_dir)
+
+    def test_resolve_database_location_skips_invalid_cwd_database_and_finds_conda_install(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            cwd_database_dir = temp_path / "workspace" / "database"
+            cwd_database_dir.mkdir(parents=True)
+            (cwd_database_dir / "db.txt").write_text("placeholder\n")
+
+            conda_database_dir = temp_path / "pixi" / "share" / "itak" / "database"
+            conda_database_dir.mkdir(parents=True)
+            for file_name in itak_runtime.DATABASE_MARKER_FILES:
+                (conda_database_dir / file_name).write_text("ok\n")
+
+            with mock.patch("itak.runtime.os.getcwd", return_value=str(temp_path / "workspace")), \
+                 mock.patch("itak.runtime.os.getenv", side_effect=lambda key: str(temp_path / "pixi") if key == "CONDA_PREFIX" else None):
+                resolved = itak_runtime.resolve_database_location()
+
+        self.assertEqual(resolved, itak_runtime.DatabaseLocation(path=str(conda_database_dir), source="conda"))
+
+    def test_resolve_database_location_finds_user_install(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            user_database_dir = temp_path / ".local" / "share" / "itak" / "database"
+            user_database_dir.mkdir(parents=True)
+            for file_name in itak_runtime.DATABASE_MARKER_FILES:
+                (user_database_dir / file_name).write_text("ok\n")
+
+            with mock.patch("itak.runtime.get_user_database_dir", return_value=str(user_database_dir)), \
+                 mock.patch("itak.runtime.os.getcwd", return_value=str(temp_path / "workspace")), \
+                 mock.patch("itak.runtime.os.getenv", return_value=None):
+                resolved = itak_runtime.resolve_database_location()
+
+        self.assertEqual(resolved, itak_runtime.DatabaseLocation(path=str(user_database_dir), source="user"))
+
+    def test_resolve_database_target_dir_matches_conda_default(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            conda_prefix = Path(temp_dir) / "pixi"
+
+            def fake_getenv(key):
+                if key == "CONDA_PREFIX":
+                    return str(conda_prefix)
+                return None
+
+            with mock.patch("itak.runtime.os.getenv", side_effect=fake_getenv), \
+                 mock.patch("itak.runtime.is_database_dir", return_value=False):
+                resolved = itak_runtime.resolve_database_target_dir()
+
+        self.assertEqual(resolved, str(conda_prefix / "share" / "itak" / "database"))
 
     def test_install_database_archive_accepts_custom_archive_root(self):
         with tempfile.TemporaryDirectory() as temp_dir:

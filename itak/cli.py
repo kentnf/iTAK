@@ -108,12 +108,20 @@ def run_db_cli(args):
     raise SystemExit(f"Unknown db command: {args.db_command}")
 
 
+def normalize_argv(argv):
+    if argv and argv[0] == "--":
+        return argv[1:]
+    return argv
+
+
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "db":
-        args = build_db_parser().parse_args(sys.argv[2:])
+    argv = normalize_argv(sys.argv[1:])
+
+    if argv and argv[0] == "db":
+        args = build_db_parser().parse_args(argv[1:])
         run_db_cli(args)
         return
     from itak.runtime import build_arg_parser
 
-    args = build_arg_parser().parse_args()
+    args = build_arg_parser().parse_args(argv)
     run_cli(args)

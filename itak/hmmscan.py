@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass, field
+from typing import List
 
 
 @dataclass(frozen=True)
@@ -53,9 +54,9 @@ class HmmscanBestDomainHit:
 
 @dataclass
 class HmmscanParseResult:
-    summary_hits: list[HmmscanSummaryHit] = field(default_factory=list)
-    alignments: list[HmmscanAlignment] = field(default_factory=list)
-    best_domain_hits: list[HmmscanBestDomainHit] = field(default_factory=list)
+    summary_hits: List[HmmscanSummaryHit] = field(default_factory=list)
+    alignments: List[HmmscanAlignment] = field(default_factory=list)
+    best_domain_hits: List[HmmscanBestDomainHit] = field(default_factory=list)
 
     def to_legacy_tuple(self):
         summary_text = "".join(hit.to_legacy_line() for hit in self.summary_hits)

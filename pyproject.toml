@@ -4,22 +4,24 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "itak"
-version = "2.0.5"
+version = "2.0.6"
 description = "Plant transcription factor, transcriptional regulator, and protein kinase identifier and classifier"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 license = { text = "MIT" }
 authors = [
   { name = "kentnf" }
 ]
 dependencies = [
-  "biopython>=1.86",
+  "biopython>=1.83",
   "requests>=2.31.0",
 ]
 keywords = ["bioinformatics", "plants", "hmmer", "transcription-factors", "kinase"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "License :: OSI Approved :: MIT License",

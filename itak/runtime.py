@@ -10,6 +10,7 @@ import tarfile
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional, Tuple
 
 from itak.rules import load_rule_records
 
@@ -47,11 +48,11 @@ class SamplePaths:
 
 @dataclass(frozen=True)
 class AnalysisRequest:
-    seq_files: tuple[str, ...]
+    seq_files: Tuple[str, ...]
     frame: str
     process: int
-    specific: str | None
-    output: str | None
+    specific: Optional[str]
+    output: Optional[str]
     mode: str
     classify: bool
 

@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+from typing import Tuple
 
 
 @dataclass(frozen=True)
 class DomainHitCollection:
-    hits: tuple[str, ...]
-    scores: tuple[float, ...]
+    hits: Tuple[str, ...]
+    scores: Tuple[float, ...]
     counts: dict
     scores_by_domain: dict
 

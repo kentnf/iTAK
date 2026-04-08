@@ -4,7 +4,7 @@ platforms = ["linux-64", "osx-64", "osx-arm64"]
 
 [dependencies]
 python = "3.11.*"
-biopython = ">=1.86,<2"
+biopython = ">=1.83,<2"
 requests = ">=2.31,<3"
 hmmer = "*"
 pip = "*"

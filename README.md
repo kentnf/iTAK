@@ -36,7 +36,7 @@ Use this only if you do not want to use `pixi`.
 
 Requirements:
 
-- Python 3.10+
+- Python 3.8+
 - `hmmscan` from HMMER available on `PATH`
 
 Install:

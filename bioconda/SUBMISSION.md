@@ -2,9 +2,9 @@
 
 Current upstream code release:
 
-- version: `2.0.5`
-- source tarball: `https://github.com/kentnf/iTAK/archive/refs/tags/v2.0.5.tar.gz`
-- source sha256: `916e30535fd26d99fc852a758fdc45739c3e4e7510e5db1c58fe5851af396282`
+- version: `2.0.7`
+- source tarball: `https://github.com/kentnf/iTAK/archive/refs/tags/v2.0.7.tar.gz`
+- source sha256: `6f02223479a1e07750eeaccd5e7e5c31ed354053d3912edd999a0424b2595ea9`
 
 Current external database release:
 
@@ -28,15 +28,16 @@ Recipe files in this repository:
 
 ## Suggested PR Title
 
-`Add iTAK 2.0.5`
+`Add iTAK 2.0.7`
 
 ## Suggested PR Body
 
 ```text
-This PR adds iTAK 2.0.5 to Bioconda.
+This PR adds iTAK 2.0.7 to Bioconda.
 
 Highlights:
 - Python package with the `itak` console entry point
+- Supports Python 3.8+
 - Runtime dependency on `hmmer`
 - Large reference database is not bundled in the package
 - Database is distributed separately through GitHub Releases and installed by users with `itak db download`
@@ -69,6 +70,6 @@ From this repository, the following already passed before submission:
 - `python -m itak db download --path <tmpdir>`
 - `python -m itak db verify --path <tmpdir>`
 
-## Open Item To Confirm Manually
+## Packaging Notes Addressed Upstream
 
-- The repository metadata says `MIT`, but the repository currently does not include a top-level `LICENSE` file. If Bioconda reviewers require `license_file`, add the canonical license text in a separate upstream change first.
+- A top-level `LICENSE` file is now included, and the recipe declares `license_file: LICENSE`.
